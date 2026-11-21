@@ -130,7 +130,7 @@ function route() {
   const name = (location.hash || "#rooms").slice(1);
   const view = VIEWS.includes(name) ? name : "rooms";
   for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
-  for (const a of document.querySelectorAll(".tabs a")) {
+  for (const a of document.querySelectorAll(".nav a[data-view]")) {
     if (a.dataset.view === view) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   }
@@ -202,6 +202,7 @@ async function loadMachine() {
   } catch (err) {
     state.machine = [];
     $("machine-rows").replaceChildren(el("p", { class: "problem", text: `Checks failed: ${err.message}` }));
+    renderStatus();
     renderSetup();
     return;
   }
@@ -213,7 +214,27 @@ async function loadMachine() {
     rows.push(kv(label, value, tone));
   }
   $("machine-rows").replaceChildren(...rows);
+  renderStatus();
   renderSetup();
+}
+
+/* Sidebar status card and the machine panel's chip: one summary of the setup checks. */
+function renderStatus() {
+  const results = state.machine || [];
+  const fails = results.filter((r) => r.level === "FAIL").length;
+  const warns = results.filter((r) => r.level === "WARN").length;
+  const [text, tone, label] = !results.length ? ["Checks did not run", "crit", "Error"]
+    : fails ? ["Setup needed", "crit", "Setup needed"]
+    : warns ? ["Ready, with notes", "warn", "Ready"]
+    : ["Ready", "good", "Ready"];
+  $("status-dot").className = `dot ${tone}`;
+  $("status-text").textContent = text;
+  const short = (check) => versionOf((results.find((r) => r.check === check) || {}).text || "");
+  const keys = [["Python", short("python")], ["Git", short("git")]].filter(([, v]) => v);
+  $("status-keys").replaceChildren(...keys.map(([k, v]) => el("kbd", { text: `${k} ${v.split(".").slice(0, 2).join(".")}` })));
+  const agy = short("agent_version") || short("agent");
+  $("status-meta").textContent = agy ? `AGY ${agy} · 127.0.0.1` : "LOCAL · 127.0.0.1";
+  $("machine-chip").replaceChildren(chip(label, tone));
 }
 
 const CHECK_TITLES = {
@@ -222,8 +243,8 @@ const CHECK_TITLES = {
 };
 
 function checkCard(r) {
-  const card = el("section", { class: "card check" },
-    el("div", { class: "check-head" }, el("b", { text: CHECK_TITLES[r.check] || r.check }),
+  const card = el("section", { class: "panel check" },
+    el("div", { class: "panel-head" }, el("h2", { text: CHECK_TITLES[r.check] || r.check }),
        chip(r.level === "OK" ? "OK" : r.level === "FAIL" ? "Missing" : r.level === "WARN" ? "Check" : "Info",
             LEVEL_TONE[r.level] || "neutral")),
     el("div", { class: "text", text: r.text }));
@@ -269,11 +290,45 @@ function button(text, action, data, cls = "") {
   return el("button", { type: "button", class: `btn ${cls}`.trim(), text, onclick: () => action(data) });
 }
 
-function roomCard(row) {
-  const card = el("article", { class: "card room" });
+const SVG_NS = "http://www.w3.org/2000/svg";
+const ICONS = {
+  folder: ["M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"],
+  play: ["M8 5.5v13l10.5-6.5z"],
+  check: ["M5 12.5 10 17.5 19 7"],
+  cross: ["M7 7l10 10", "M17 7 7 17"],
+  plus: ["M12 5v14", "M5 12h14"],
+  pause: ["M9 6v12", "M15 6v12"],
+  stop: ["M7 7h10v10H7z"],
+  loop: ["M4.5 12a7.5 7.5 0 0 1 13-5.1L19.5 9", "M19.5 4.5V9H15", "M19.5 12a7.5 7.5 0 0 1-13 5.1L4.5 15", "M4.5 19.5V15H9"],
+  flag: ["M6 20V4.5", "M6 5h11l-2 4 2 4H6"],
+};
+
+function tile(name) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ICONS[name] || ICONS.folder) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return el("span", { class: "tile" }, svg);
+}
+
+function roomTone(row) {
+  if (row.error) return "crit";
   const s = row.status;
-  const where = s ? `${s.repo} • ${row.base_branch || s.repo_branch || ""}` : row.dir;
-  card.append(el("div", { class: "room-head" },
+  if (s.running) return "live";
+  if (s.problems && s.problems.length) return "crit";
+  if (s.paused !== null || s.open_task) return "warn";
+  return "good";
+}
+
+function roomCard(row) {
+  const card = el("article", { class: "room", id: `room-${row.name}` });
+  const s = row.status;
+  const where = s ? `${s.repo} · ${row.base_branch || s.repo_branch || ""}` : row.dir;
+  card.append(el("div", { class: "room-head" }, tile("folder"),
     el("div", {}, el("h3", { text: row.name }), el("div", { class: "path", text: where })), roomChip(row)));
 
   if (row.error) {
@@ -317,7 +372,7 @@ function roomCard(row) {
   if (s.running) actions.append(button("Stop round", stopRound, row.name, "danger"));
   if (latest && latest.report) actions.append(button("Open report", openReport, { room: row.name, task: latest.task }));
   if (latest) {
-    actions.append(button("Open task folder", openFolder, { room: row.name, task: latest.task }, s.running ? "primary" : ""));
+    actions.append(button("Open task folder", openFolder, { room: row.name, task: latest.task }));
   }
   card.append(actions);
   return card;
@@ -327,7 +382,9 @@ function pickEvidence() {
   const withRounds = state.rooms.filter((r) => r.latest && r.latest.round > 0);
   const chosen = withRounds.find((r) => r.name === state.evidenceRoom);
   if (chosen) return chosen;
-  return withRounds.sort((a, b) => String(b.latest.updated_at || "").localeCompare(String(a.latest.updated_at || "")))[0];
+  // Prefer the newest round that has evidence; a round still running has none yet.
+  return withRounds.sort((a, b) => (Number(Boolean(b.latest.run)) - Number(Boolean(a.latest.run)))
+    || String(b.latest.updated_at || "").localeCompare(String(a.latest.updated_at || "")))[0];
 }
 
 function exitText(c) {
@@ -378,8 +435,90 @@ function renderEvidence() {
     const warnings = l.run.warnings || [];
     if (warnings.length) parts.push(el("p", { class: "small", text: `Warnings: ${warnings.join(", ")}` }));
   }
-  if (l.report) parts.push(button("Open report", openReport, { room: row.name, task: l.task }));
+  if (l.report) parts.push(button("Open report", openReport, { room: row.name, task: l.task }, "small"));
   body.replaceChildren(...parts);
+  const v = l.run ? (l.run.verify || {}).status : null;
+  $("evidence-chip").replaceChildren(!l.run ? chip("Running", "warn") : v === "PASSED" ? chip("Verified", "good")
+    : v === "FAILED" ? chip("Failed", "crit") : v === "AWAITING_ROOM_RUN" ? chip("To verify", "warn") : chip("Recorded", "neutral"));
+}
+
+/* ------------------------------------------------------------------ activity, sidebar rooms, running pill */
+
+const EVENTS = {
+  room_created: ["plus", (e) => "Room created", null],
+  task_created: ["plus", (e) => `${e.task} created${e.title ? ` · ${e.title}` : ""}`, null],
+  dispatch_started: ["play", (e) => `${e.task} round ${e.round} started`, null],
+  round_recorded: ["flag", (e) => `${e.task} round ${e.round} finished`, ["Review", "info"]],
+  round_failed: ["cross", (e) => `${e.task} round ${e.round} failed`, ["Failed", "crit"]],
+  manual_verify: ["check", (e) => `${e.task} verified`, null],
+  task_accepted: ["check", (e) => `${e.task} accepted`, ["Accepted", "good"]],
+  task_rejected: ["cross", (e) => `${e.task} rejected`, ["Rejected", "crit"]],
+  rework_ready: ["loop", (e) => `${e.task} sent back for rework`, ["Rework", "warn"]],
+  paused: ["pause", (e) => "Room paused", ["Paused", "warn"]],
+  unpaused: ["play", (e) => "Room unpaused", null],
+  stop_requested: ["stop", (e) => `${e.task} round ${e.round} stopped`, ["Stopped", "warn"]],
+  recovered_interrupted: ["loop", (e) => `${e.task} round ${e.round} recovered`, ["Interrupted", "warn"]],
+  cap_override: ["flag", (e) => `${e.task} round limit overridden`, ["Override", "warn"]],
+  verify_gate_skipped: ["flag", (e) => `${e.task} accepted without verify`, ["Skipped", "crit"]],
+};
+
+function renderActivity() {
+  const items = state.rooms.flatMap((r) => (r.recent || []).map((e) => ({ ...e, room: r.name })))
+    .sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || ""))).slice(0, 7);
+  if (!items.length) {
+    $("activity").replaceChildren(el("div", { class: "empty-state" },
+      el("span", { text: "Nothing has happened yet. Tasks, rounds and decisions show up here." })));
+    return;
+  }
+  $("activity").replaceChildren(...items.map((e) => {
+    const [icon, title, tag] = EVENTS[e.event] || ["flag", () => e.event.replace(/_/g, " "), null];
+    let badge = tag;
+    if (e.event === "manual_verify") badge = e.status === "PASSED" ? ["Passed", "good"] : ["Failed", "crit"];
+    if (e.event === "round_recorded" && e.run_status && e.run_status !== "COMPLETED") {
+      badge = [e.run_status.replace(/_/g, " ").toLowerCase(), e.run_status === "INTERRUPTED" ? "warn" : "crit"];
+    }
+    const meta = [e.room, ago(e.ts), e.reason].filter(Boolean).join(" · ");
+    return el("div", { class: "act" }, tile(icon),
+      el("div", { class: "act-body" }, el("div", { class: "act-title", text: title(e) }), el("div", { class: "act-meta", text: meta })),
+      badge ? chip(badge[0], badge[1]) : null);
+  }));
+}
+
+function renderSideRooms() {
+  $("side-rooms").replaceChildren(...state.rooms.map((r) => {
+    const open = r.status && r.status.open_task;
+    return el("a", { href: "#rooms", class: "side-room", title: r.dir,
+      onclick: () => { state.evidenceRoom = r.name; renderEvidence(); setTimeout(() => {
+        const card = $(`room-${r.name}`);
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 0); } },
+      el("span", { class: `dot ${roomTone(r)}` }), el("span", { text: r.name }),
+      open ? el("span", { class: "side-count", text: open.id }) : null);
+  }));
+}
+
+function renderRunPill() {
+  const row = state.rooms.find((r) => r.status && r.status.running);
+  const pill = $("run-pill");
+  clearInterval(state.pillTimer);
+  if (!row) {
+    pill.hidden = true;
+    return;
+  }
+  const run = row.status.running;
+  const title = row.latest && row.latest.task === run.task && row.latest.title ? ` · ${row.latest.title}` : "";
+  $("run-task").textContent = `${run.task} round ${run.round}${title}`;
+  $("run-room").textContent = row.name.toUpperCase();
+  const tick = () => {
+    const secs = Math.max(0, Math.floor((Date.now() - Date.parse(run.started_at)) / 1000));
+    const h = Math.floor(secs / 3600);
+    const mm = String(Math.floor((secs % 3600) / 60)).padStart(2, "0");
+    const ss = String(secs % 60).padStart(2, "0");
+    $("run-time").textContent = h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  };
+  tick();
+  state.pillTimer = setInterval(tick, 1000);
+  pill.hidden = false;
 }
 
 function renderAgentRooms() {
@@ -391,6 +530,44 @@ function renderAgentRooms() {
   $("agent-room-field").hidden = names.length < 2;
 }
 
+function stat(label, value, unit, note, word = false) {
+  return el("div", { class: "stat" },
+    el("span", { class: "stat-label", text: label }),
+    el("div", { class: "stat-row" }, el("span", { class: `stat-value${word ? " word" : ""}`, text: value }),
+       unit ? el("span", { class: "stat-unit", text: unit }) : null),
+    el("span", { class: "stat-note", text: note }));
+}
+
+function renderStats() {
+  const rooms = state.rooms.filter((r) => !r.error);
+  const running = rooms.filter((r) => r.status.running).length;
+  const paused = rooms.filter((r) => r.status.paused !== null).length;
+  const open = rooms.filter((r) => r.status.open_task);
+  const review = open.filter((r) => r.status.open_task.status === "AWAITING_REVIEW").length;
+  const ev = pickEvidence();
+  const verify = ev && ev.latest.run ? (ev.latest.run.verify || {}).status : null;
+  const VERIFY = { PASSED: ["Passed", "The Foreman ran your tests on the branch"],
+                   FAILED: ["Failed", "Your tests failed on the latest round"],
+                   AWAITING_ROOM_RUN: ["Waiting", "The manager verifies after reading the diff"] };
+  const [vWord, vNote] = VERIFY[verify] || ["None", "Appears after the first round"];
+  const noteRooms = [running && `${running} running`, paused && `${paused} paused`, review && `${review} awaiting review`]
+    .filter(Boolean).join(" · ") || (rooms.length ? "All idle" : "Add your first project");
+  const count = (name) => rooms.reduce((n, r) => n + ((r.status.tasks || {})[name] || 0), 0);
+  const accepted = count("ACCEPTED");
+  const rejected = count("REJECTED");
+  $("stats").replaceChildren(
+    stat("Rooms", String(rooms.length), rooms.length === 1 ? "room" : "rooms", noteRooms),
+    stat("Accepted", String(accepted), accepted === 1 ? "task" : "tasks",
+         `${open.length} open · ${rejected} rejected`),
+    stat("Last verify", vWord, "", ev ? `${vNote} · ${ev.name}` : vNote, true));
+  $("room-count").textContent = rooms.length ? String(rooms.length) : "";
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
 async function loadRooms() {
   if (state.offline) return;
   clearTimeout(state.pollTimer);
@@ -400,9 +577,14 @@ async function loadRooms() {
     state.rooms = res.data;
     const list = $("room-list");
     list.replaceChildren(...(state.rooms.length ? state.rooms.map(roomCard)
-      : [el("p", { class: "muted", text: "No rooms yet. Add your first project below." })]));
+      : [el("div", { class: "empty-state" }, el("span", { text: "No rooms yet. Add your first project to get started." }),
+           el("a", { class: "btn primary", href: "#add", text: "New room" }))]));
     renderEvidence();
     renderAgentRooms();
+    renderStats();
+    renderActivity();
+    renderSideRooms();
+    renderRunPill();
   } catch (err) {
     if (!state.offline) $("room-list").replaceChildren(el("p", { class: "problem", text: `Could not read rooms: ${err.message}` }));
   }
@@ -455,7 +637,7 @@ function resultLines(results) {
 function outputBlock(code, output, error) {
   const nodes = [];
   if (output) nodes.push(el("pre", { class: "code", text: output }));
-  if (error) nodes.push(el("div", { class: "banner critical", text: error }));
+  if (error) nodes.push(el("div", { class: "banner crit", text: error }));
   if (!output && !error) nodes.push(el("p", { class: "muted", text: `Finished with exit code ${code}.` }));
   return nodes;
 }
@@ -469,12 +651,12 @@ async function runDoctor(room) {
     if (!Array.isArray(res.data)) throw new Error(res.error || res.output || "doctor failed");
     const fails = res.data.filter((r) => r.level === "FAIL").length;
     const warns = res.data.filter((r) => r.level === "WARN").length;
-    const summary = fails ? el("div", { class: "banner critical", text: `${fails} problem(s) to fix before the next round.` })
+    const summary = fails ? el("div", { class: "banner crit", text: `${fails} problem(s) to fix before the next round.` })
       : warns ? el("div", { class: "banner warn", text: `Ready, with ${warns} warning(s).` })
       : el("div", { class: "banner good", text: "Everything checks out." });
     openPanel(`Doctor • ${room}`, [summary, el("div", { class: "checks" }, resultLines(res.data))]);
   } catch (err) {
-    openPanel(`Doctor • ${room}`, [el("div", { class: "banner critical", text: err.message })]);
+    openPanel(`Doctor • ${room}`, [el("div", { class: "banner crit", text: err.message })]);
   }
 }
 
@@ -502,7 +684,10 @@ async function stopRound(room) {
   const reason = await ask(`Stop the running round in ${room}?`,
     "The executor is stopped now. Partial work is snapshotted on the task branch; nothing is deleted. Your manager agent decides what happens next.",
     "Stop round");
-  if (reason !== null) simpleAction("/api/stop", { room, reason }, "Round stopped.");
+  if (reason !== null) {
+    await simpleAction("/api/stop", { room, reason }, "Round stopped.");
+    setTimeout(loadRooms, 2500);   // the dispatcher records the stopped round a moment later
+  }
 }
 
 async function openReport({ room, task }) {
@@ -521,7 +706,7 @@ async function openReport({ room, task }) {
                             : el("p", { class: "muted", text: "No report for this round yet." });
     openPanel(`${room} • ${d.task}${d.title ? ` • ${d.title}` : ""}`, [facts, note, report]);
   } catch (err) {
-    openPanel(`${room} • ${task}`, [el("div", { class: "banner critical", text: err.message })]);
+    openPanel(`${room} • ${task}`, [el("div", { class: "banner crit", text: err.message })]);
   }
 }
 
@@ -626,11 +811,11 @@ async function detect() {
   try {
     d = await api("/api/detect", { path });
   } catch (err) {
-    msg.replaceChildren(el("div", { class: "banner critical", text: err.message }));
+    msg.replaceChildren(el("div", { class: "banner crit", text: err.message }));
     return;
   }
   if (!d.is_repo) {
-    msg.replaceChildren(el("div", { class: "banner critical",
+    msg.replaceChildren(el("div", { class: "banner crit",
       text: "This folder is not a git repository. Open a terminal there and run `git init`, make a first commit, then try again — or choose another folder." }));
     $("folder-fields").hidden = true;
     document.querySelector('[data-action="to-step-2"]').disabled = true;
@@ -750,7 +935,7 @@ async function create() {
     res = await api("/api/init", { room: w.name, repo: w.repo, base: w.base, ...w.final });
   } catch (err) {
     $("create-title").textContent = "The room was not created";
-    $("create-output").replaceChildren(el("div", { class: "banner critical", text: err.message }));
+    $("create-output").replaceChildren(el("div", { class: "banner crit", text: err.message }));
     $("create-nav").hidden = false;
     copyBtn.hidden = true;
     return;
@@ -767,7 +952,7 @@ async function create() {
   const fails = results.filter((r) => r.level === "FAIL").length;
   const warns = results.filter((r) => r.level === "WARN").length;
   const summary = !results.length ? el("div", { class: "banner warn", text: "Doctor did not report results. Run it again from the Rooms page." })
-    : fails ? el("div", { class: "banner critical", text: "Fix the items marked FAIL, then run doctor again from the Rooms page." })
+    : fails ? el("div", { class: "banner crit", text: "Fix the items marked FAIL, then run doctor again from the Rooms page." })
     : warns ? el("div", { class: "banner warn", text: "Ready, with the warnings below." })
     : el("div", { class: "banner good", text: "Everything checks out. Copy the agent instructions and start talking to your manager agent." });
   $("create-output").replaceChildren(summary, ...outputBlock(0, res.init.output, ""));
@@ -814,7 +999,22 @@ $("ask-reason").addEventListener("keydown", (event) => {
 });
 window.addEventListener("hashchange", route);
 
+/* Shortcuts: 1-4 switch views, N starts a new room. Ignored while typing or in a dialog. */
+const SHORTCUTS = { 1: "#rooms", 2: "#setup", 3: "#guide", 4: "#about", n: "#add", N: "#add" };
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+  const target = event.target;
+  if (target.closest && target.closest("input, select, textarea, dialog[open]")) return;
+  if (document.querySelector("dialog[open]")) return;
+  const hash = SHORTCUTS[event.key];
+  if (hash && location.hash !== hash) {
+    event.preventDefault();
+    location.hash = hash;
+  }
+});
+
 async function start() {
+  $("greeting").textContent = greeting();
   route();
   try {
     state.info = await api("/api/info");

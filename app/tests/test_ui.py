@@ -280,7 +280,7 @@ class LiveServerTests(unittest.TestCase):
         for path in ("/static/../server.py", "/static/stacks.toml", "/static/fonts/OFL.txt", "/static/x.css"):
             r, _ = self.request("GET", f"{path}?t={self.srv.token}", token_header=False)
             self.assertEqual(r.status, 404, path)
-        r, body = self.request("GET", f"/static/fonts/IBMPlexSans-Regular-Latin1.woff2?t={self.srv.token}",
+        r, body = self.request("GET", f"/static/fonts/Inter-Variable-Latin.woff2?t={self.srv.token}",
                                token_header=False)
         self.assertEqual((r.status, r.getheader("Content-Type"), body[:4]), (200, "font/woff2", b"wOF2"))
 
@@ -349,6 +349,19 @@ class RoomPyAdditionTests(RoomCase):
         self.assertTrue(agent["url"].startswith("https://") and agent["hint"])
         rc, out, _ = run_cli("check", "--agent", PY)
         self.assertIn("[OK] python", out)
+
+    def test_recent_events_newest_first_without_noise(self):
+        self.new_task()
+        self.cli("pause", "freeze")
+        with open(self.room / "events.jsonl", "a", encoding="utf-8") as fh:
+            fh.write("not json\n")
+            fh.write(json.dumps({"ts": "x", "event": "agent_started", "task": "T-0001", "round": 1, "data": {}}) + "\n")
+        events = cli.recent_events(self.room)
+        self.assertEqual([e["event"] for e in events[:2]], ["paused", "task_created"])
+        self.assertEqual(events[0]["reason"], "freeze")
+        self.assertNotIn("agent_started", [e["event"] for e in events])
+        self.assertEqual(cli.list_data(self.room.parent)[0]["recent"], events)
+        self.assertEqual(cli.recent_events(self.root / "missing"), [])
 
     def test_set_list_fills_only_the_named_key(self):
         text = "default_commands = []   # c\nprotected_paths = []\n"

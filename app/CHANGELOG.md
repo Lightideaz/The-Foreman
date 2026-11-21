@@ -2,6 +2,13 @@
 
 The highlights of each release. The About page in the local UI shows this file.
 
+## 1.2.0 — 2026-11-21
+
+- New look: a calm desktop-app layout with a sidebar, stat cards and hairline panels.
+- Light and dark themes that follow your Windows setting automatically.
+- Recent activity feed across all rooms, and a live timer while a round runs.
+- Keyboard shortcuts: 1–4 switch views, N starts a new room.
+
 ## 1.1.0 — 2026-11-21
 
 - Local control panel: double-click `Foreman.cmd` to set up and watch your rooms in the browser.

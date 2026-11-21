@@ -21,8 +21,13 @@ manager.
 
 ## 2. Screens
 
-The look follows the approved canvas (`Foreman.dc.html`, `Tokens.dc.html`): a ground page, one rounded
-shell, white cards, mocha accent, one espresso card, sage/amber/terracotta status chips.
+Since 1.2 the look is a calm desktop-app style: a sidebar (views, the rooms with a status dot, a machine
+status card), a greeting header, three stat cards with dot-matrix numbers, hairline panels, uppercase mono
+status chips. Light mode is a warm off-white; dark mode is near-black with one lime accent. The page follows
+the Windows app theme through `prefers-color-scheme`; there is no toggle. The home page also shows a
+**Recent activity** feed (the newest events of every room, from `list --json`), and a floating pill with a
+live timer while a round runs. Keys `1`–`4` switch views and `N` opens the new-room wizard.
+(1.0–1.1 used the light-coffee identity from the design canvas; it was replaced on 2026-11-21.)
 
 ### 2.1 Setup (machine checks)
 
@@ -140,10 +145,16 @@ offers no remote access.
 
 ### 3.4 Fonts
 
-The canvas uses IBM Plex Sans and Mono. A local UI must not call Google Fonts, so IBM's own Latin-1
-`woff2` subsets (Sans 400/500/600/700, Mono 400/500, about 125 KB, SIL Open Font License in `OFL.txt`) ship
-in `foreman_ui/static/fonts/`, taken from the official `@ibm/plex-sans` 2.0.0 and `@ibm/plex-mono` 2.5.0
-packages. Characters outside Latin-1 fall back to Segoe UI / Consolas.
+A local UI must not call a font service, so the fonts ship in `foreman_ui/static/fonts/`, all under the SIL
+Open Font License 1.1 (license files beside them), about 115 KB in total:
+
+| Font | Use | Source |
+|---|---|---|
+| Inter (variable, Latin) | all UI text | `@fontsource-variable/inter` 5.1.0 |
+| IBM Plex Mono 400/500 (Latin-1) | paths, commands, chips | `@ibm/plex-mono` 2.5.0 |
+| Doto 700 (Latin) | the big stat numbers and the round timer | `@fontsource/doto` 5.1.0 |
+
+Characters outside these subsets fall back to Segoe UI / Consolas.
 
 ## 4. Tests (non-UI logic)
 
@@ -166,3 +177,4 @@ non-Windows support.
 1. Design approved.
 2. Fonts: option B (bundled IBM Plex subsets).
 3. Folder dialog: `tkinter` in a child process; a pasted path is the fallback.
+4. 1.2: new look (sidebar layout, light and dark following Windows), replacing the light-coffee identity.

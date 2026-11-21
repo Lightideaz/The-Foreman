@@ -3,167 +3,216 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <meta name="foreman-token" content="{{TOKEN}}">
 <title>The Foreman</title>
 <link rel="stylesheet" href="/static/app.css?t={{TOKEN}}">
 <script src="/static/app.js?t={{TOKEN}}" defer></script>
 </head>
 <body>
-<div class="page">
-<div class="shell">
+<div class="app">
 
-<header class="top">
+<!-- ============================================================ Sidebar -->
+<aside class="sidebar">
   <div class="brand">
-    <div class="brand-mark" aria-hidden="true">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
-    </div>
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
+    </span>
     <span class="brand-name">The Foreman</span>
-    <span class="tag" id="version-tag">local</span>
+    <span class="tag mono" id="version-tag"></span>
   </div>
-  <nav class="tabs" aria-label="Main">
-    <a href="#rooms" data-view="rooms">Rooms</a>
-    <a href="#setup" data-view="setup">Setup</a>
-    <a href="#guide" data-view="guide">Guide</a>
-    <a href="#about" data-view="about">About</a>
-  </nav>
-  <a class="btn primary" href="#add">+ New room</a>
-</header>
 
-<div id="offline" class="banner critical" hidden>
-  The Foreman UI has stopped. Start it again with <code>python foreman_ui.py</code>.
+  <nav class="nav" aria-label="Main">
+    <a href="#rooms" data-view="rooms">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-3.5v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z"></path></svg>
+      <span>Home</span><kbd>1</kbd>
+    </a>
+    <a href="#setup" data-view="setup">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="m8.5 12.2 2.4 2.4 4.6-4.9"></path></svg>
+      <span>Setup</span><kbd>2</kbd>
+    </a>
+    <a href="#guide" data-view="guide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h10.5"></path></svg>
+      <span>Guide</span><kbd>3</kbd>
+    </a>
+    <a href="#about" data-view="about">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v5"></path><path d="M12 7.8v.2"></path></svg>
+      <span>About</span><kbd>4</kbd>
+    </a>
+  </nav>
+
+  <div class="nav-section">
+    <div class="nav-label mono">Rooms</div>
+    <div class="nav" id="side-rooms"></div>
+    <nav class="nav" aria-label="Rooms actions">
+      <a href="#add" data-view="add">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+        <span>New room</span><kbd>N</kbd>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-foot">
+    <button type="button" class="nav-btn" data-action="quit">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8"></path><path d="M6.6 7.4a7.5 7.5 0 1 0 10.8 0"></path></svg>
+      <span>Quit</span>
+    </button>
+    <div class="status-card" id="status-card">
+      <div class="status-line"><span class="dot neutral" id="status-dot"></span><span id="status-text">Checking this computer…</span></div>
+      <div class="status-keys" id="status-keys"></div>
+      <div class="status-meta mono" id="status-meta">LOCAL · 127.0.0.1</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ============================================================ Main -->
+<div class="main">
+
+<div id="offline" class="banner crit" hidden>
+  The Foreman UI has stopped. Start it again with <code>Foreman.cmd</code>.
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<!-- ============================================================ Rooms -->
+<!-- ------------------------------------------------------------ Home -->
 <main id="view-rooms" class="view">
-  <div class="cols">
-    <div class="col side">
-      <section class="card">
-        <h2>This machine</h2>
-        <div id="machine-rows" class="rows"><p class="muted">Checking…</p></div>
-        <button type="button" class="btn" data-action="recheck">Run checks again</button>
-      </section>
-      <section class="card espresso">
-        <h2>How it works</h2>
-        <ol>
-          <li>Your manager agent writes a task.</li>
-          <li>The executor builds it in a sandbox.</li>
-          <li>The manager reads the diff and verifies.</li>
-          <li>Only then is it accepted.</li>
-        </ol>
-      </section>
+  <header class="page-head">
+    <div>
+      <h1 id="greeting">Welcome back</h1>
+      <p class="sub">Double-click <kbd>Foreman.cmd</kbd> any time. Your manager agent runs the work; you watch it here.</p>
     </div>
+    <span class="chip good">Local only</span>
+  </header>
 
-    <div class="col main">
-      <h2 class="section-title">Rooms</h2>
-      <div id="room-list" class="stack"><p class="muted">Loading rooms…</p></div>
-      <a class="add-tile" href="#add">
-        <span class="add-title">+ Add a project</span>
-        <span class="muted">Pick a folder. The Foreman detects the stack and suggests the test commands for you to confirm.</span>
-      </a>
-    </div>
+  <div class="stats" id="stats"></div>
 
-    <div class="col side">
-      <section class="card" id="evidence">
-        <h2>Last round evidence</h2>
-        <div id="evidence-body"><p class="muted">No rounds yet.</p></div>
+  <div class="board">
+    <section class="panel" aria-labelledby="rooms-title">
+      <div class="panel-head">
+        <h2 id="rooms-title">Rooms <span class="count mono" id="room-count"></span></h2>
+        <a class="link" href="#add">New room</a>
+      </div>
+      <div id="room-list" class="room-list"><p class="muted pad">Loading rooms…</p></div>
+    </section>
+
+    <div class="board-side">
+      <section class="panel">
+        <div class="panel-head"><h2>This machine</h2><span id="machine-chip"></span></div>
+        <div id="machine-rows" class="kv-list"><p class="muted">Checking…</p></div>
       </section>
-      <section class="card">
-        <h2>Your manager agent</h2>
-        <p class="muted">Claude Code, Codex CLI or any agent with a terminal. Copy its instructions once, then talk to it as usual.</p>
+      <section class="panel promo">
+        <div class="panel-head"><h2>Your manager agent</h2><span class="chip info">Setup</span></div>
+        <p class="muted small">Claude Code, Codex CLI or any agent with a terminal. Copy its instructions once, then talk to it as usual.</p>
         <label class="field compact" id="agent-room-field" hidden>
           <span>Room</span>
           <select id="agent-room"></select>
         </label>
-        <button type="button" class="btn latte" data-action="copy-instructions">Copy agent instructions</button>
+        <div class="panel-foot"><button type="button" class="pill-btn" data-action="copy-instructions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>Copy instructions</button></div>
       </section>
     </div>
   </div>
+
+  <div class="board">
+    <section class="panel" aria-labelledby="activity-title">
+      <div class="panel-head"><h2 id="activity-title">Recent activity</h2><span class="muted small">All rooms</span></div>
+      <div id="activity" class="activity"><p class="muted">Nothing yet.</p></div>
+    </section>
+    <section class="panel" id="evidence">
+      <div class="panel-head"><h2>Last round evidence</h2><span id="evidence-chip"></span></div>
+      <div id="evidence-body"><p class="muted">No rounds yet.</p></div>
+    </section>
+  </div>
 </main>
 
-<!-- ============================================================ Setup -->
+<!-- ------------------------------------------------------------ Setup -->
 <main id="view-setup" class="view" hidden>
-  <div class="view-head">
+  <header class="page-head">
     <div>
-      <h2 class="section-title">Setup checks</h2>
-      <p class="muted">What The Foreman needs on this computer. Nothing is installed for you: each fix links to the official download page.</p>
+      <h1>Setup</h1>
+      <p class="sub">What The Foreman needs on this computer. Nothing is installed for you: each fix links to the official download page.</p>
     </div>
-    <button type="button" class="btn" data-action="recheck">Run checks again</button>
-  </div>
+    <div class="head-actions"><button type="button" class="btn ghost" data-action="recheck">Run checks again</button></div>
+  </header>
   <div id="setup-list" class="grid"></div>
-  <section class="card">
-    <h2>Where things live</h2>
-    <div id="paths" class="rows mono-rows"></div>
+  <section class="panel">
+    <div class="panel-head"><h2>Where things live</h2></div>
+    <div id="paths" class="kv-list mono-values"></div>
   </section>
 </main>
 
-<!-- ============================================================ Guide -->
+<!-- ------------------------------------------------------------ Guide -->
 <main id="view-guide" class="view" hidden>
-  <h2 class="section-title">Guide</h2>
+  <header class="page-head">
+    <div>
+      <h1>Guide</h1>
+      <p class="sub">How The Foreman splits the work between you, your manager agent and the executor.</p>
+    </div>
+  </header>
   <div class="grid two">
-    <section class="card">
-      <h2>Who does what</h2>
-      <p>You talk to your <b>manager agent</b>. It writes each task, starts the round, reads the diff, runs <code>verify</code> and decides to accept, rework or reject.</p>
-      <p>This window helps you set up rooms and watch them. It never dispatches, verifies or accepts work.</p>
+    <section class="panel">
+      <div class="panel-head"><h2>How it works</h2></div>
+      <ol class="steps">
+        <li><b>Your manager agent writes a task.</b> Scope, acceptance criteria and the commands that prove it.</li>
+        <li><b>The executor builds it in a sandbox.</b> On its own branch, with no network.</li>
+        <li><b>The manager reads the diff and verifies.</b> Your test commands, run by The Foreman.</li>
+        <li><b>Only then is it accepted.</b> One commit on your base branch. Nothing is pushed.</li>
+      </ol>
     </section>
-    <section class="card">
-      <h2>The daily loop (run by the manager)</h2>
+    <section class="panel">
+      <div class="panel-head"><h2>The daily loop</h2><span class="muted small">run by the manager</span></div>
       <pre class="code" id="loop-commands"></pre>
     </section>
-    <section class="card">
-      <h2>Safe to do from here</h2>
+    <section class="panel">
+      <div class="panel-head"><h2>Safe to do from here</h2></div>
       <ul class="plain">
         <li><b>Pause room</b> blocks new rounds. A running round continues.</li>
         <li><b>Stop round</b> ends a running round. Partial work is snapshotted; nothing is deleted.</li>
         <li><b>Run doctor</b> checks a room and explains each problem.</li>
       </ul>
     </section>
-    <section class="card">
-      <h2>Read more</h2>
-      <div id="docs" class="rows mono-rows"></div>
+    <section class="panel">
+      <div class="panel-head"><h2>Read more</h2></div>
+      <div id="docs" class="kv-list mono-values"></div>
     </section>
   </div>
 </main>
 
-<!-- ============================================================ About -->
+<!-- ------------------------------------------------------------ About -->
 <main id="view-about" class="view" hidden>
   <section class="about-hero">
-    <div class="about-mark" aria-hidden="true">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
-    </div>
+    <span class="about-mark" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
+    </span>
     <div class="about-title">
-      <h2>The Foreman</h2>
-      <p class="about-tagline">A supervised workbench for two AI agents: one that thinks, one that builds.</p>
-      <div class="chips"><span class="chip about-chip" id="about-version">Version</span><span class="chip about-chip" id="about-released" hidden></span></div>
+      <h1>The Foreman</h1>
+      <p class="sub">A supervised workbench for two AI agents: one that thinks, one that builds.</p>
+      <div class="chips"><span class="chip neutral" id="about-version">Version</span><span class="chip neutral" id="about-released" hidden></span></div>
     </div>
   </section>
 
   <div class="about-grid">
     <div class="stack">
-      <section class="card">
-        <h2>About this release</h2>
-        <div class="rows" id="about-facts"></div>
+      <section class="panel">
+        <div class="panel-head"><h2>About this release</h2></div>
+        <div class="kv-list" id="about-facts"></div>
       </section>
-      <section class="card">
-        <h2>Principles</h2>
-        <ul class="plain about-list">
+      <section class="panel">
+        <div class="panel-head"><h2>Principles</h2></div>
+        <ul class="plain">
           <li><b>Evidence over claims.</b> The executor's report is a claim; git and the recorded activity are the evidence.</li>
           <li><b>The manager decides.</b> Nothing is dispatched, verified or accepted without your manager agent.</li>
           <li><b>Nothing leaves this computer.</b> No telemetry, no cloud service, nothing is ever pushed.</li>
         </ul>
       </section>
-      <section class="card">
-        <h2>Credits</h2>
-        <p class="small muted">Typefaces: IBM Plex Sans and IBM Plex Mono, © IBM Corp., under the SIL Open Font License 1.1.</p>
-        <p class="small muted">Built with the Python standard library. No third-party packages.</p>
+      <section class="panel">
+        <div class="panel-head"><h2>Credits</h2></div>
+        <p class="muted small">Typefaces: Inter, © The Inter Project Authors; IBM Plex Mono, © IBM Corp.; Doto, © The Doto Project Authors. All under the SIL Open Font License 1.1.</p>
+        <p class="muted small">Built with the Python standard library. No third-party packages.</p>
       </section>
     </div>
 
-    <section class="card changelog" aria-labelledby="changelog-title">
-      <div class="changelog-head">
-        <h2 id="changelog-title">Changelog</h2>
-        <span class="muted small">Highlights only</span>
-      </div>
+    <section class="panel" aria-labelledby="changelog-title">
+      <div class="panel-head"><h2 id="changelog-title">Changelog</h2><span class="muted small">Highlights only</span></div>
       <ol class="timeline" id="changelog"></ol>
     </section>
   </div>
@@ -171,15 +220,15 @@
   <p class="legal" id="about-legal"></p>
 </main>
 
-<!-- ============================================================ Add a project -->
+<!-- ------------------------------------------------------------ Add a project -->
 <main id="view-add" class="view" hidden>
-  <div class="view-head">
+  <header class="page-head">
     <div>
-      <h2 class="section-title">Add a project</h2>
-      <p class="muted">Four short steps. You confirm every setting before anything is written.</p>
+      <h1>New room</h1>
+      <p class="sub">Four short steps. You confirm every setting before anything is written.</p>
     </div>
-    <a class="btn" href="#rooms">Cancel</a>
-  </div>
+    <div class="head-actions"><a class="btn ghost" href="#rooms">Cancel</a></div>
+  </header>
   <ol class="stepper" id="stepper">
     <li data-step="1">Folder</li>
     <li data-step="2">Stack</li>
@@ -187,15 +236,15 @@
     <li data-step="4">Create</li>
   </ol>
 
-  <section class="card wizard" data-step-panel="1">
-    <h2>Which project?</h2>
-    <p class="muted">Choose the project's git working copy. The Foreman only reads files here; it runs nothing.</p>
+  <section class="panel wizard" data-step-panel="1">
+    <div class="panel-head"><h2>Which project?</h2></div>
+    <p class="muted small">Choose the project's git working copy. The Foreman only reads files here; it runs nothing.</p>
     <div class="row-inline">
-      <button type="button" class="btn" data-action="browse">Browse…</button>
+      <button type="button" class="btn ghost" data-action="browse">Browse…</button>
       <input id="folder" class="input mono grow" type="text" placeholder="D:\Code\my-app" autocomplete="off" spellcheck="false" aria-label="Project folder">
-      <button type="button" class="btn primary" data-action="detect">Use this folder</button>
+      <button type="button" class="btn ghost" data-action="detect">Use this folder</button>
     </div>
-    <div id="folder-msg"></div>
+    <div id="folder-msg" class="rows"></div>
     <div id="folder-fields" class="grid two" hidden>
       <label class="field"><span>Room name</span><input id="room-name" class="input mono" type="text" autocomplete="off" spellcheck="false"><small class="muted">Lower-case letters, digits and dashes.</small></label>
       <label class="field"><span>Base branch</span><input id="base-branch" class="input mono" type="text" autocomplete="off" spellcheck="false"><small class="muted">Accepted work lands here as one commit. Nothing is ever pushed.</small></label>
@@ -203,63 +252,64 @@
     <div class="wizard-nav"><span></span><button type="button" class="btn primary" data-action="to-step-2" disabled>Next</button></div>
   </section>
 
-  <section class="card wizard" data-step-panel="2" hidden>
-    <h2>What we found</h2>
+  <section class="panel wizard" data-step-panel="2" hidden>
+    <div class="panel-head"><h2>What we found</h2></div>
     <div id="stack-chips" class="chips"></div>
-    <h3>How the manager proves work <span class="muted small">(verify commands)</span></h3>
+    <h3>How the manager proves work <span class="muted small">verify commands</span></h3>
     <p class="muted small">These run on your computer, outside the sandbox, when the manager runs <code>verify</code> after reading the diff.</p>
     <div id="verify-list" class="checklist"></div>
-    <button type="button" class="btn small" data-action="add-verify">+ Add a command</button>
-    <h3>Extra commands the executor may not run <span class="muted small">(deny rules)</span></h3>
+    <button type="button" class="btn ghost small" data-action="add-verify">+ Add a command</button>
+    <h3>Extra commands the executor may not run <span class="muted small">deny rules</span></h3>
     <p class="muted small">Git writes, network tools, shells and common package managers are always blocked. These add the ones your stack uses.</p>
     <div id="deny-list" class="checklist"></div>
-    <h3>Paths that need your approval to change <span class="muted small">(protected paths)</span></h3>
+    <h3>Paths that need your approval to change <span class="muted small">protected paths</span></h3>
     <p class="muted small">A change here is flagged as a warning in the round's report.</p>
     <div id="protect-list" class="checklist"></div>
-    <button type="button" class="btn small" data-action="add-protect">+ Add a path</button>
-    <div class="wizard-nav"><button type="button" class="btn" data-action="to-step-1">Back</button><button type="button" class="btn primary" data-action="to-step-3">Next</button></div>
+    <button type="button" class="btn ghost small" data-action="add-protect">+ Add a path</button>
+    <div class="wizard-nav"><button type="button" class="btn ghost" data-action="to-step-1">Back</button><button type="button" class="btn primary" data-action="to-step-3">Next</button></div>
   </section>
 
-  <section class="card wizard" data-step-panel="3" hidden>
-    <h2>Review</h2>
+  <section class="panel wizard" data-step-panel="3" hidden>
+    <div class="panel-head"><h2>Review</h2></div>
     <dl id="review" class="review"></dl>
     <div id="review-warnings"></div>
-    <div class="wizard-nav"><button type="button" class="btn" data-action="to-step-2">Back</button><button type="button" class="btn primary" data-action="create">Create room and check it</button></div>
+    <div class="wizard-nav"><button type="button" class="btn ghost" data-action="to-step-2">Back</button><button type="button" class="btn primary" data-action="create">Create room and check it</button></div>
   </section>
 
-  <section class="card wizard" data-step-panel="4" hidden>
-    <h2 id="create-title">Creating the room…</h2>
-    <div id="create-output"></div>
+  <section class="panel wizard" data-step-panel="4" hidden>
+    <div class="panel-head"><h2 id="create-title">Creating the room…</h2></div>
+    <div id="create-output" class="rows"></div>
     <div id="doctor-output" class="checks"></div>
     <div class="wizard-nav" id="create-nav" hidden>
-      <button type="button" class="btn" data-action="to-step-3">Back</button>
-      <span class="row-inline"><button type="button" class="btn latte" data-action="copy-new-instructions">Copy agent instructions</button><a class="btn primary" href="#rooms">Go to rooms</a></span>
+      <button type="button" class="btn ghost" data-action="to-step-3">Back</button>
+      <span class="row-inline"><button type="button" class="btn ghost" data-action="copy-new-instructions">Copy agent instructions</button><a class="btn primary" href="#rooms">Go to rooms</a></span>
     </div>
   </section>
 </main>
 
-<footer class="foot">
-  <span class="muted small">Runs on this computer only (127.0.0.1). Nothing is sent anywhere.</span>
-  <button type="button" class="link-btn" data-action="quit">Quit</button>
-</footer>
-
 </div>
 </div>
 
-<dialog id="panel" class="panel" aria-labelledby="panel-title">
-  <div class="panel-head">
+<div class="run-pill" id="run-pill" hidden>
+  <span class="run-dot" aria-hidden="true"><span></span></span>
+  <span class="run-text"><b id="run-task"></b><span id="run-room" class="mono"></span></span>
+  <span class="run-time mono" id="run-time">00:00</span>
+</div>
+
+<dialog id="panel" class="dialog" aria-labelledby="panel-title">
+  <div class="dialog-head">
     <h2 id="panel-title">Report</h2>
-    <button type="button" class="btn small" data-action="close-panel">Close</button>
+    <button type="button" class="btn ghost small" data-action="close-panel">Close</button>
   </div>
-  <div id="panel-body" class="panel-body"></div>
+  <div id="panel-body" class="dialog-body"></div>
 </dialog>
 
-<dialog id="ask" class="panel small-panel" aria-labelledby="ask-title">
+<dialog id="ask" class="dialog small-dialog" aria-labelledby="ask-title">
   <div class="ask-form">
     <h2 id="ask-title"></h2>
-    <p id="ask-text" class="muted"></p>
-    <label class="field"><span>Reason <span class="muted small">(written to the room's log)</span></span><input id="ask-reason" class="input" type="text" maxlength="300" autocomplete="off"></label>
-    <div class="wizard-nav"><button type="button" class="btn" data-action="ask-cancel">Cancel</button><button type="button" class="btn primary" id="ask-ok" data-action="ask-ok">OK</button></div>
+    <p id="ask-text" class="muted small"></p>
+    <label class="field"><span>Reason <span class="muted small">written to the room's log</span></span><input id="ask-reason" class="input" type="text" maxlength="300" autocomplete="off"></label>
+    <div class="wizard-nav"><button type="button" class="btn ghost" data-action="ask-cancel">Cancel</button><button type="button" class="btn primary" id="ask-ok" data-action="ask-ok">OK</button></div>
   </div>
 </dialog>
 </body>

@@ -217,6 +217,7 @@ def list_data(rooms_dir: Path | None = None) -> list[dict]:
             row["status"] = status_data(room)
             row["max_rounds"] = room.config["policy"]["max_rounds"]
             row["timeout_minutes"] = room.config["agent"]["timeout_minutes"]
+            row["recent"] = recent_events(d)
             row["base_branch"] = room.config["project"]["base_branch"]
             ids = room.task_ids()
             if ids:
@@ -227,6 +228,32 @@ def list_data(rooms_dir: Path | None = None) -> list[dict]:
             row["error"] = f"unreadable room: {exc}"
         rows.append(row)
     return rows
+
+
+QUIET_EVENTS = {"agent_started", "stale_lock_removed"}
+EVENT_FIELDS = ("title", "status", "reason", "verdict", "run_status")
+
+
+def recent_events(room_dir: Path, limit: int = 8) -> list[dict]:
+    """The newest meaningful events of a room, newest first, with a few short display fields."""
+    try:
+        lines = (room_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()[-300:]
+    except OSError:
+        return []
+    out: list[dict] = []
+    for line in reversed(lines):
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(e, dict) or e.get("event") in QUIET_EVENTS:
+            continue
+        data = e.get("data") if isinstance(e.get("data"), dict) else {}
+        out.append({"ts": e.get("ts"), "event": e.get("event"), "task": e.get("task"), "round": e.get("round"),
+                    **{k: str(data[k])[:160] for k in EVENT_FIELDS if data.get(k) not in (None, "")}})
+        if len(out) >= limit:
+            break
+    return out
 
 
 RUN_KEYS = ("run_status", "result_status", "agent_status", "verdict_hint", "warnings", "notices",
