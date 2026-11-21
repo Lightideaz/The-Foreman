@@ -124,17 +124,35 @@ function goOffline(message) {
 
 /* ------------------------------------------------------------------ routing */
 
-const VIEWS = ["rooms", "setup", "guide", "about", "add"];
+const VIEWS = ["rooms", "room", "setup", "guide", "about", "add"];
 
-function route() {
-  const name = (location.hash || "#rooms").slice(1);
-  const view = VIEWS.includes(name) ? name : "rooms";
-  for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
-  for (const a of document.querySelectorAll(".nav a[data-view]")) {
-    if (a.dataset.view === view) a.setAttribute("aria-current", "page");
+function markNav() {
+  for (const a of document.querySelectorAll(".nav a[data-view], .nav a[data-room]")) {
+    const current = a.dataset.room !== undefined
+      ? state.view === "room" && a.dataset.room === state.roomView
+      : a.dataset.view === state.view;
+    if (current) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   }
+}
+
+function route() {
+  let raw = (location.hash || "#rooms").slice(1);
+  try { raw = decodeURIComponent(raw); } catch { /* keep the raw hash */ }
+  let view = raw;
+  state.roomView = null;
+  if (raw.startsWith("room/")) {
+    view = "room";
+    state.roomView = raw.slice(5);
+  }
+  if (!VIEWS.includes(view)) view = "rooms";
+  const changed = state.view !== view;
+  state.view = view;
+  for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
+  markNav();
+  if (view === "room") renderRoomPage();
   if (view === "add" && (!state.wiz || state.step === 4)) resetWizard();
+  if (changed || view === "room") window.scrollTo(0, 0);
 }
 
 /* ------------------------------------------------------------------ theme */
@@ -368,20 +386,32 @@ function roomTone(row) {
   return "good";
 }
 
+function roomHref(name) {
+  return `#room/${encodeURIComponent(name)}`;
+}
+
+function roomWhere(row) {
+  const s = row.status;
+  return s ? `${s.repo} · ${row.base_branch || s.repo_branch || ""}` : row.dir;
+}
+
 function roomCard(row) {
   const card = el("article", { class: "room", id: `room-${row.name}` });
-  const s = row.status;
-  const where = s ? `${s.repo} · ${row.base_branch || s.repo_branch || ""}` : row.dir;
   card.append(el("div", { class: "room-head" }, tile("folder"),
-    el("div", {}, el("h3", { text: row.name }), el("div", { class: "path", text: where })), roomChip(row)));
+    el("div", {}, el("h3", {}, el("a", { class: "room-link", href: roomHref(row.name), text: row.name })),
+       el("div", { class: "path", text: roomWhere(row) })), roomChip(row)));
+  card.append(...roomDetails(row), roomActions(row));
+  return card;
+}
 
-  if (row.error) {
-    card.append(el("p", { class: "problem", text: row.error }));
-    card.append(el("div", { class: "actions" }, button("Run doctor", runDoctor, row.name)));
-    return card;
-  }
+/* The body of a room: open task facts, running bar, notes and problems. */
+function roomDetails(row) {
+  const nodes = [];
+  if (row.error) return [el("p", { class: "problem", text: row.error })];
+  const s = row.status;
   const latest = row.latest;
   const open = s.open_task;
+  const card = { append: (...n) => nodes.push(...n) };
   if (open) {
     const title = latest && latest.task === open.id && latest.title ? ` • ${latest.title}` : "";
     const third = s.running ? ["Running for", duration(s.running.started_at)]
@@ -409,8 +439,17 @@ function roomCard(row) {
     card.append(el("div", { class: "note", text: `Paused${s.paused ? `: ${s.paused}` : ""}. No new round starts until you unpause.` }));
   }
   for (const p of s.problems || []) card.append(el("p", { class: "problem", text: p }));
+  return nodes;
+}
 
+function roomActions(row) {
   const actions = el("div", { class: "actions" });
+  if (row.error) {
+    actions.append(button("Run doctor", runDoctor, row.name));
+    return actions;
+  }
+  const s = row.status;
+  const latest = row.latest;
   if (!s.running) actions.append(button("Run doctor", runDoctor, row.name));
   actions.append(s.paused !== null ? button("Unpause", unpauseRoom, row.name) : button("Pause room", pauseRoom, row.name));
   if (s.running) actions.append(button("Stop round", stopRound, row.name, "danger"));
@@ -418,8 +457,7 @@ function roomCard(row) {
   if (latest) {
     actions.append(button("Open task folder", openFolder, { room: row.name, task: latest.task }));
   }
-  card.append(actions);
-  return card;
+  return actions;
 }
 
 function pickEvidence() {
@@ -458,14 +496,17 @@ function evidenceChips(run) {
 }
 
 function renderEvidence() {
-  const row = pickEvidence();
-  const body = $("evidence-body");
-  if (!row) {
+  renderEvidenceInto(pickEvidence(), $("evidence-body"), $("evidence-chip"), true);
+}
+
+function renderEvidenceInto(row, body, chipSlot, withRoom) {
+  if (!row || !row.latest || !(row.latest.round > 0)) {
     body.replaceChildren(el("p", { class: "muted", text: "No rounds yet." }));
+    chipSlot.replaceChildren();
     return;
   }
   const l = row.latest;
-  const parts = [el("div", { class: "ev-sub", text: `${row.name} • ${l.task} • round ${l.round}` })];
+  const parts = [el("div", { class: "ev-sub", text: `${withRoom ? `${row.name} • ` : ""}${l.task} • round ${l.round}` })];
   if (!l.run) {
     parts.push(el("p", { class: "muted small", text: "Round in progress. Evidence appears when it ends." }));
   } else {
@@ -482,7 +523,7 @@ function renderEvidence() {
   if (l.report) parts.push(button("Open report", openReport, { room: row.name, task: l.task }, "small"));
   body.replaceChildren(...parts);
   const v = l.run ? (l.run.verify || {}).status : null;
-  $("evidence-chip").replaceChildren(!l.run ? chip("Running", "warn") : v === "PASSED" ? chip("Verified", "good")
+  chipSlot.replaceChildren(!l.run ? chip("Running", "warn") : v === "PASSED" ? chip("Verified", "good")
     : v === "FAILED" ? chip("Failed", "crit") : v === "AWAITING_ROOM_RUN" ? chip("To verify", "warn") : chip("Recorded", "neutral"));
 }
 
@@ -509,19 +550,23 @@ const EVENTS = {
 function renderActivity() {
   const items = state.rooms.flatMap((r) => (r.recent || []).map((e) => ({ ...e, room: r.name })))
     .sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || ""))).slice(0, 7);
+  renderActivityInto(items, $("activity"), true);
+}
+
+function renderActivityInto(items, target, withRoom) {
   if (!items.length) {
-    $("activity").replaceChildren(el("div", { class: "empty-state" },
+    target.replaceChildren(el("div", { class: "empty-state" },
       el("span", { text: "Nothing has happened yet. Tasks, rounds and decisions show up here." })));
     return;
   }
-  $("activity").replaceChildren(...items.map((e) => {
+  target.replaceChildren(...items.map((e) => {
     const [icon, title, tag] = EVENTS[e.event] || ["flag", () => e.event.replace(/_/g, " "), null];
     let badge = tag;
     if (e.event === "manual_verify") badge = e.status === "PASSED" ? ["Passed", "good"] : ["Failed", "crit"];
     if (e.event === "round_recorded" && e.run_status && e.run_status !== "COMPLETED") {
       badge = [e.run_status.replace(/_/g, " ").toLowerCase(), e.run_status === "INTERRUPTED" ? "warn" : "crit"];
     }
-    const meta = [e.room, ago(e.ts), e.reason].filter(Boolean).join(" · ");
+    const meta = [withRoom ? e.room : null, ago(e.ts), e.reason].filter(Boolean).join(" · ");
     return el("div", { class: "act" }, tile(icon),
       el("div", { class: "act-body" }, el("div", { class: "act-title", text: title(e) }), el("div", { class: "act-meta", text: meta })),
       badge ? chip(badge[0], badge[1]) : null);
@@ -531,14 +576,72 @@ function renderActivity() {
 function renderSideRooms() {
   $("side-rooms").replaceChildren(...state.rooms.map((r) => {
     const open = r.status && r.status.open_task;
-    return el("a", { href: "#rooms", class: "side-room", title: r.dir,
-      onclick: () => { state.evidenceRoom = r.name; renderEvidence(); setTimeout(() => {
-        const card = $(`room-${r.name}`);
-        if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 0); } },
+    return el("a", { href: roomHref(r.name), class: "side-room", title: r.dir, "data-room": r.name },
       el("span", { class: `dot ${roomTone(r)}` }), el("span", { text: r.name }),
       open ? el("span", { class: "side-count", text: open.id }) : null);
   }));
+  markNav();
+}
+
+/* Newest `verify` result across the given rooms, from their event logs. */
+function lastVerify(rooms) {
+  const runs = rooms.flatMap((r) => (r.recent || []).filter((e) => e.event === "manual_verify")
+    .map((e) => ({ ...e, room: r.name })));
+  return runs.sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")))[0] || null;
+}
+
+function verifyStat(rooms, withRoom) {
+  const v = lastVerify(rooms);
+  if (v) {
+    const passed = v.status === "PASSED";
+    return stat("Last verify", passed ? "Passed" : "Failed", "",
+      [v.task, ago(v.ts), withRoom ? v.room : null].filter(Boolean).join(" · "), true);
+  }
+  return stat("Last verify", "None", "", "The manager runs verify after reading a diff", true);
+}
+
+function renderRoomPage() {
+  if (state.view !== "room") return;
+  const row = state.rooms.find((r) => r.name === state.roomView);
+  $("room-title-name").textContent = state.roomView || "Room";
+  $("room-missing").hidden = Boolean(row) || !state.roomsLoaded;
+  $("room-content").hidden = !row;
+  if (!row) {
+    $("room-title-path").textContent = "";
+    $("room-title-chip").replaceChildren();
+    return;
+  }
+  $("room-title-path").textContent = roomWhere(row);
+  $("room-title-chip").replaceChildren(roomChip(row));
+  $("room-task").replaceChildren(...roomDetails(row));
+  $("room-actions").replaceChildren(...roomActions(row).childNodes);
+  if (row.error) {
+    for (const id of ["room-stats", "room-activity", "room-evidence", "room-settings", "room-task-chip", "room-evidence-chip"]) {
+      $(id).replaceChildren();
+    }
+    return;
+  }
+  const s = row.status;
+  const tasks = s.tasks || {};
+  const total = Object.values(tasks).reduce((n, k) => n + k, 0);
+  const open = s.open_task;
+  $("room-stats").replaceChildren(
+    stat("Tasks", String(total), total === 1 ? "task" : "tasks",
+         `${tasks.ACCEPTED || 0} accepted · ${tasks.REJECTED || 0} rejected`),
+    stat("Open task", open ? open.id : "None", "", open ? `Round ${open.rounds} of ${row.max_rounds || "?"}` : "Ready for the next task", true),
+    verifyStat([row], false));
+  $("room-task-chip").replaceChildren(open ? chip(TASK_STATUS[open.status] || open.status, s.running ? "warn" : "info")
+                                           : chip("No open task", "neutral"));
+  renderActivityInto((row.recent || []).map((e) => ({ ...e, room: row.name })), $("room-activity"), false);
+  renderEvidenceInto(row, $("room-evidence"), $("room-evidence-chip"), false);
+  $("room-settings").replaceChildren(
+    kv("Repository", s.repo),
+    kv("Base branch", row.base_branch || "-"),
+    kv("Checked out", s.repo_branch || "-"),
+    kv("Round limit", `${row.max_rounds || "?"} per task`),
+    kv("Time limit", `${row.timeout_minutes || "?"} min per round`),
+    kv("Paused", s.paused === null ? "No" : `Yes${s.paused ? ` · ${s.paused}` : ""}`),
+    kv("Room folder", row.dir));
 }
 
 function renderRunPill() {
@@ -588,12 +691,6 @@ function renderStats() {
   const paused = rooms.filter((r) => r.status.paused !== null).length;
   const open = rooms.filter((r) => r.status.open_task);
   const review = open.filter((r) => r.status.open_task.status === "AWAITING_REVIEW").length;
-  const ev = pickEvidence();
-  const verify = ev && ev.latest.run ? (ev.latest.run.verify || {}).status : null;
-  const VERIFY = { PASSED: ["Passed", "The Foreman ran your tests on the branch"],
-                   FAILED: ["Failed", "Your tests failed on the latest round"],
-                   AWAITING_ROOM_RUN: ["Waiting", "The manager verifies after reading the diff"] };
-  const [vWord, vNote] = VERIFY[verify] || ["None", "Appears after the first round"];
   const noteRooms = [running && `${running} running`, paused && `${paused} paused`, review && `${review} awaiting review`]
     .filter(Boolean).join(" · ") || (rooms.length ? "All idle" : "Add your first project");
   const count = (name) => rooms.reduce((n, r) => n + ((r.status.tasks || {})[name] || 0), 0);
@@ -603,7 +700,7 @@ function renderStats() {
     stat("Rooms", String(rooms.length), rooms.length === 1 ? "room" : "rooms", noteRooms),
     stat("Accepted", String(accepted), accepted === 1 ? "task" : "tasks",
          `${open.length} open · ${rejected} rejected`),
-    stat("Last verify", vWord, "", ev ? `${vNote} · ${ev.name}` : vNote, true));
+    verifyStat(rooms, true));
   $("room-count").textContent = rooms.length ? String(rooms.length) : "";
 }
 
@@ -619,6 +716,7 @@ async function loadRooms() {
     const res = await api("/api/rooms");
     if (!Array.isArray(res.data)) throw new Error(res.error || "room.py list failed");
     state.rooms = res.data;
+    state.roomsLoaded = true;
     const list = $("room-list");
     list.replaceChildren(...(state.rooms.length ? state.rooms.map(roomCard)
       : [el("div", { class: "empty-state" }, el("span", { text: "No rooms yet. Add your first project to get started." }),
@@ -629,6 +727,7 @@ async function loadRooms() {
     renderActivity();
     renderSideRooms();
     renderRunPill();
+    renderRoomPage();
   } catch (err) {
     if (!state.offline) $("room-list").replaceChildren(el("p", { class: "problem", text: `Could not read rooms: ${err.message}` }));
   }
@@ -1011,6 +1110,7 @@ async function create() {
 
 const ACTIONS = {
   theme: () => cycleTheme(),
+  "copy-room-instructions": () => copyInstructions(state.roomView),
   recheck: () => loadMachine(),
   "copy-instructions": () => copyInstructions($("agent-room").value || (state.rooms.find((r) => !r.error) || {}).name),
   "copy-new-instructions": () => copyInstructions(state.wiz && state.wiz.name),

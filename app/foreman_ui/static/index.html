@@ -91,13 +91,19 @@
   <div class="stats" id="stats"></div>
 
   <div class="board">
-    <section class="panel" aria-labelledby="rooms-title">
-      <div class="panel-head">
-        <h2 id="rooms-title">Rooms <span class="count mono" id="room-count"></span></h2>
-        <a class="link" href="#add">New room</a>
-      </div>
-      <div id="room-list" class="room-list"><p class="muted pad">Loading rooms…</p></div>
-    </section>
+    <div class="stack">
+      <section class="panel" aria-labelledby="rooms-title">
+        <div class="panel-head">
+          <h2 id="rooms-title">Rooms <span class="count mono" id="room-count"></span></h2>
+          <a class="link" href="#add">New room</a>
+        </div>
+        <div id="room-list" class="room-list"><p class="muted pad">Loading rooms…</p></div>
+      </section>
+      <section class="panel" aria-labelledby="activity-title">
+        <div class="panel-head"><h2 id="activity-title">Recent activity</h2><span class="muted small">All rooms</span></div>
+        <div id="activity" class="activity"><p class="muted">Nothing yet.</p></div>
+      </section>
+    </div>
 
     <div class="board-side">
       <section class="panel">
@@ -114,18 +120,63 @@
         <div class="panel-foot"><button type="button" class="pill-btn" data-action="copy-instructions">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>Copy instructions</button></div>
       </section>
+      <section class="panel" id="evidence">
+        <div class="panel-head"><h2>Last round evidence</h2><span id="evidence-chip"></span></div>
+        <div id="evidence-body" class="ev-body"><p class="muted">No rounds yet.</p></div>
+      </section>
     </div>
   </div>
+</main>
 
-  <div class="board">
-    <section class="panel" aria-labelledby="activity-title">
-      <div class="panel-head"><h2 id="activity-title">Recent activity</h2><span class="muted small">All rooms</span></div>
-      <div id="activity" class="activity"><p class="muted">Nothing yet.</p></div>
-    </section>
-    <section class="panel" id="evidence">
-      <div class="panel-head"><h2>Last round evidence</h2><span id="evidence-chip"></span></div>
-      <div id="evidence-body"><p class="muted">No rounds yet.</p></div>
-    </section>
+<!-- ------------------------------------------------------------ One room -->
+<main id="view-room" class="view" hidden>
+  <header class="page-head">
+    <div class="room-title">
+      <span class="tile big" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"></path></svg></span>
+      <div>
+        <p class="eyebrow mono">Room</p>
+        <h1 id="room-title-name">Room</h1>
+        <p class="sub mono" id="room-title-path"></p>
+      </div>
+    </div>
+    <span id="room-title-chip"></span>
+  </header>
+
+  <div id="room-missing" class="panel" hidden>
+    <div class="empty-state"><span>This room no longer exists in the rooms folder.</span><a class="btn" href="#rooms">Back to Home</a></div>
+  </div>
+
+  <div id="room-content">
+    <div class="stats" id="room-stats"></div>
+    <div class="board">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-head"><h2>Current task</h2><span id="room-task-chip"></span></div>
+          <div id="room-task" class="rows"></div>
+          <div id="room-actions" class="actions"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Activity</h2><span class="muted small">This room</span></div>
+          <div id="room-activity" class="activity"></div>
+        </section>
+      </div>
+      <div class="board-side">
+        <section class="panel">
+          <div class="panel-head"><h2>Last round evidence</h2><span id="room-evidence-chip"></span></div>
+          <div id="room-evidence" class="ev-body"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><h2>Settings</h2><span class="muted small">room.toml</span></div>
+          <div id="room-settings" class="kv-list mono-values"></div>
+        </section>
+        <section class="panel promo">
+          <div class="panel-head"><h2>Manager instructions</h2></div>
+          <p class="muted small">Paste these into this project's agent instructions (CLAUDE.md, AGENTS.md or GEMINI.md).</p>
+          <div class="panel-foot"><button type="button" class="pill-btn" data-action="copy-room-instructions">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>Copy instructions</button></div>
+        </section>
+      </div>
+    </div>
   </div>
 </main>
 

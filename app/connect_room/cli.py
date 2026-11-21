@@ -234,7 +234,7 @@ QUIET_EVENTS = {"agent_started", "stale_lock_removed"}
 EVENT_FIELDS = ("title", "status", "reason", "verdict", "run_status")
 
 
-def recent_events(room_dir: Path, limit: int = 8) -> list[dict]:
+def recent_events(room_dir: Path, limit: int = 12) -> list[dict]:
     """The newest meaningful events of a room, newest first, with a few short display fields."""
     try:
         lines = (room_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()[-300:]

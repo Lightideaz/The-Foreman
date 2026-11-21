@@ -7,6 +7,8 @@ The highlights of each release. The About page in the local UI shows this file.
 - New look: a calm desktop-app layout with a sidebar, stat cards and hairline panels.
 - Light and dark themes that follow your Windows setting, with a switch to pick one yourself.
 - Redesigned About page with release notes and full credits.
+- A page for every room: current task, its activity, last round evidence and settings.
+- The app sits in a centered window, close to its sidebar, on large screens.
 - Recent activity feed across all rooms, and a live timer while a round runs.
 - Keyboard shortcuts: 1–4 switch views, N starts a new room.
 
