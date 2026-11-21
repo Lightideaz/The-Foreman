@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "command(regex:^node test\\.js$)"
+    ],
+    "deny": [
+      "command(regex:^git (add|commit|push|pull|fetch|checkout|switch|reset|rebase|merge|stash|clean|tag|branch|remote|config)( .*)?$)"
+    ]
+  }
+}

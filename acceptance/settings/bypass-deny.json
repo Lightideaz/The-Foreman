@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "allow": ["command(regex:^node( .*)?$)"],
+    "deny": ["unsandboxed(*)"]
+  }
+}

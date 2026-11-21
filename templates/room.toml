@@ -1,0 +1,38 @@
+# The Foreman - room configuration (DESIGN.md §4). Unknown keys are rejected.
+
+[project]
+name          = @@NAME@@
+repo          = @@REPO@@
+base_branch   = @@BASE@@
+branch_prefix = "room/"
+
+[agent]
+command          = @@AGENT@@
+args_prefix      = []
+tested_version   = "1.5.12"
+permission_model = "sandbox"          # sandbox: every agent command stays in the sandbox, a bypass ends
+                                      # the round; allowlist: exact allow rules (bypassable, DESIGN F17)
+mode             = "accept-edits"     # the only accepted value
+model            = ""                 # empty = agy default
+effort           = ""                 # empty = agy default
+sandbox          = true
+settings_file    = "agy-settings.base.json"
+timeout_minutes  = 45
+max_prompt_chars = 24000
+env_scrub        = ["*TOKEN*", "*SECRET*", "*PASSWORD*", "*API_KEY*", "*ACCESS_KEY*", "GITHUB_*", "GH_*",
+                    "ANTHROPIC_*", "OPENAI_*", "AWS_*", "AZURE_*", "NPM_TOKEN"]
+env_passthrough  = []
+
+[verify]
+default_commands = []                 # e.g. ["npm test"] or [".\gradlew.bat test"]
+timeout_minutes  = 15
+room_run         = "after_review"     # when The Foreman runs these itself (outside any sandbox):
+                                      # after_review (Claude runs `verify` after reading the diff),
+                                      # after_round (automatically), never (agent evidence only)
+
+[policy]
+max_rounds           = 3
+protected_paths      = []
+sensitive_patterns   = [".env", ".env.*", "*.pem", "*.key", "*.pfx", "*.p12", "*.ppk", "*.keystore", "*.jks",
+                        "id_rsa*", "id_ed25519*", "credentials.json"]
+sensitive_exceptions = [".env.example"]

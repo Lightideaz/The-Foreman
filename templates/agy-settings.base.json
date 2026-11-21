@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "command(regex:^git (status|diff|log|show|ls-files|rev-parse)( .*)?$)"
+    ],
+    "deny": [
+      "command(regex:^git (add|commit|push|pull|fetch|clone|checkout|switch|restore|reset|rebase|merge|cherry-pick|revert|stash|clean|tag|branch|remote|config|submodule|worktree|gc|update-ref|rm|mv|am|apply)( .*)?$)",
+      "command(regex:^(curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|gh|ssh|scp|sftp|ftp|nc|ncat|telnet)( .*)?$)",
+      "command(regex:^(npm|npx|yarn|bun|bunx|pip|pip3|uv|choco|winget|scoop)( .*)?$)",
+      "command(regex:^(cmdkey|reg|regedit|setx|netsh|schtasks|sc|icacls|takeown|runas|powershell|pwsh|cmd|wsl|bash|sh)( .*)?$)",
+      "write_file({REPO}/.git/)",
+      "read_file({REPO}/.env)",
+      "write_file({REPO}/.env)"
+    ]
+  }
+}

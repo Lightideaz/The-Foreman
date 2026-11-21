@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "files_changed", "commands_run", "questions", "open_issues"],
+  "properties": {
+    "status": { "type": "string", "enum": ["DONE", "BLOCKED", "FAILED"] },
+    "summary": { "type": "string" },
+    "files_changed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "change"],
+        "properties": {
+          "path": { "type": "string" },
+          "change": { "type": "string" }
+        }
+      }
+    },
+    "commands_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "outcome"],
+        "properties": {
+          "command": { "type": "string" },
+          "outcome": { "type": "string", "enum": ["passed", "failed", "denied", "not_run"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "blocked_reason": { "type": "string" },
+    "questions": { "type": "array", "items": { "type": "string" } },
+    "open_issues": { "type": "array", "items": { "type": "string" } }
+  }
+}
