@@ -18,12 +18,13 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
     </div>
     <span class="brand-name">The Foreman</span>
-    <span class="tag">local</span>
+    <span class="tag" id="version-tag">local</span>
   </div>
   <nav class="tabs" aria-label="Main">
     <a href="#rooms" data-view="rooms">Rooms</a>
     <a href="#setup" data-view="setup">Setup</a>
     <a href="#guide" data-view="guide">Guide</a>
+    <a href="#about" data-view="about">About</a>
   </nav>
   <a class="btn primary" href="#add">+ New room</a>
 </header>
@@ -122,6 +123,52 @@
       <div id="docs" class="rows mono-rows"></div>
     </section>
   </div>
+</main>
+
+<!-- ============================================================ About -->
+<main id="view-about" class="view" hidden>
+  <section class="about-hero">
+    <div class="about-mark" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
+    </div>
+    <div class="about-title">
+      <h2>The Foreman</h2>
+      <p class="about-tagline">A supervised workbench for two AI agents: one that thinks, one that builds.</p>
+      <div class="chips"><span class="chip about-chip" id="about-version">Version</span><span class="chip about-chip" id="about-released" hidden></span></div>
+    </div>
+  </section>
+
+  <div class="about-grid">
+    <div class="stack">
+      <section class="card">
+        <h2>About this release</h2>
+        <div class="rows" id="about-facts"></div>
+      </section>
+      <section class="card">
+        <h2>Principles</h2>
+        <ul class="plain about-list">
+          <li><b>Evidence over claims.</b> The executor's report is a claim; git and the recorded activity are the evidence.</li>
+          <li><b>The manager decides.</b> Nothing is dispatched, verified or accepted without your manager agent.</li>
+          <li><b>Nothing leaves this computer.</b> No telemetry, no cloud service, nothing is ever pushed.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Credits</h2>
+        <p class="small muted">Typefaces: IBM Plex Sans and IBM Plex Mono, © IBM Corp., under the SIL Open Font License 1.1.</p>
+        <p class="small muted">Built with the Python standard library. No third-party packages.</p>
+      </section>
+    </div>
+
+    <section class="card changelog" aria-labelledby="changelog-title">
+      <div class="changelog-head">
+        <h2 id="changelog-title">Changelog</h2>
+        <span class="muted small">Highlights only</span>
+      </div>
+      <ol class="timeline" id="changelog"></ol>
+    </section>
+  </div>
+
+  <p class="legal" id="about-legal"></p>
 </main>
 
 <!-- ============================================================ Add a project -->

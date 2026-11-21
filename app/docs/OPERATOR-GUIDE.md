@@ -14,8 +14,8 @@ Every project gets its own manager session.
 
 | Where | How |
 |-------|-----|
-| Claude desktop app | Open a session whose working folder is the project's repo. Add the folder `C:\Tools	he-foreman`. Name the session `foreman-<room>`. |
-| Terminal | From the repo root: `claude -n foreman-<room> --add-dir "C:\Tools	he-foreman"` |
+| Claude desktop app | Open a session whose working folder is the project's repo. Add the folder `C:\Tools\the-foreman`. Name the session `foreman-<room>`. |
+| Terminal | From the repo root: `claude -n foreman-<room> --add-dir "C:\Tools\the-foreman"` |
 
 **At the start of every session:**
 1. Run `ROOM status`.
@@ -26,10 +26,10 @@ Every project gets its own manager session.
 **`ROOM` below means:**
 
 ```bash
-python "C:/Tools/the-foreman/room.py" --room <room>
+python "C:/Tools/the-foreman/app/room.py" --room <room>
 ```
 
-`python "C:/Tools/the-foreman/room.py" list` shows every project room.
+`python "C:/Tools/the-foreman/app/room.py" list` shows every project room.
 
 ---
 
@@ -37,7 +37,7 @@ python "C:/Tools/the-foreman/room.py" --room <room>
 
 Do this when the user asks for a new project:
 
-1. `python "C:/Tools/the-foreman/room.py" --room <name> init --repo "<repo path>" [--base main]`
+1. `python "C:/Tools/the-foreman/app/room.py" --room <name> init --repo "<repo path>" [--base main]`
 2. In `rooms\<name>\room.toml`, set:
    - `verify.default_commands`: the commands that prove work in this project, e.g. `npm test` or `.\gradlew.bat test`;
    - `policy.protected_paths`.
@@ -201,7 +201,7 @@ Start a fresh manager session for the next milestone and begin from `HANDOFF.md`
 ## 12. Command cheat sheet
 
 ```bash
-python "C:/Tools/the-foreman/room.py" list
+python "C:/Tools/the-foreman/app/room.py" list
 ROOM init --repo "<path>" [--base main]
 ROOM status [--json]
 ROOM new "<title>"

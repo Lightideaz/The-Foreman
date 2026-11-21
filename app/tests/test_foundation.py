@@ -330,8 +330,8 @@ class InitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             home = Path(d)
             repo = make_repo(home)
-            real_home = store.TOOL_HOME
-            store.TOOL_HOME = home
+            real_rooms = store.ROOMS_HOME
+            store.ROOMS_HOME = home / "rooms"
             try:
                 self.assertIn("no rooms yet", run_cli("list")[1])
                 self.assertEqual(run_cli("--room", "alpha", "init", "--repo", repo, "--agent", PY)[0], 0)
@@ -339,7 +339,7 @@ class InitTests(unittest.TestCase):
                 run_cli("--room", "beta", "pause")
                 code, out, _ = run_cli("list")
             finally:
-                store.TOOL_HOME = real_home
+                store.ROOMS_HOME = real_rooms
             self.assertEqual(code, 0)
             lines = out.splitlines()
             self.assertTrue(lines[0].startswith("alpha: "))

@@ -20,10 +20,10 @@ TASK_ID = re.compile(r"^T-\d{4,}$")
 
 
 def resolve_room_dir(arg: str) -> Path:
-    """A bare name means rooms/<name> under the tool home; anything path-like is used as a path."""
+    """A bare name means rooms/<name> next to the app folder; anything path-like is used as a path."""
     if Path(arg).is_absolute() or "/" in arg or "\\" in arg:
         return Path(arg).resolve()
-    return store.TOOL_HOME / "rooms" / arg
+    return store.ROOMS_HOME / arg
 
 
 def new_room_state() -> dict:

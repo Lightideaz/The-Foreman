@@ -75,13 +75,22 @@ The Foreman automates the relay and keeps the human-grade checks:
 # 1. Get the tool
 git clone <this repository> C:\Tools\the-foreman
 cd C:\Tools\the-foreman
-python -m unittest discover -s tests          # 105 tests, about two minutes
+python -m unittest discover -s app\tests      # 106 tests, about two minutes
+```
+
+The folder holds three things:
+
+```text
+C:\Tools\the-foreman\
+  Foreman.cmd     double-click to open the control panel
+  app\            the tool: room.py, the UI, docs, tests
+  rooms\          one folder per project, local to this computer (never committed)
 ```
 
 ### The easy way: the local UI
 
 Double-click **`Foreman.cmd`** in the tool folder. It starts the UI in the background, without a console
-window. (From a terminal: `python foreman_ui.py`, which also prints the page address.)
+window. (From a terminal: `python app\foreman_ui.py`, which also prints the page address.)
 
 Your browser opens The Foreman's control panel. It checks this computer (Python, Git, agy) and links each
 missing piece to its official download page. **Add a project** walks you through the rest: pick the
@@ -99,25 +108,33 @@ a message box points to `foreman_ui.log`. Details: `docs/UI-DESIGN.md`.
 
 ```powershell
 # Create a room for your project, with the commands that prove work
-python room.py --room my-app init --repo "D:\Code\my-app" --base main --verify "npm test"
+python app
+oom.py --room my-app init --repo "D:\Code\my-app" --base main --verify "npm test"
 
 # Check the setup; every warning comes with a fix
-python room.py --room my-app doctor
+python app
+oom.py --room my-app doctor
 ```
 
-`python room.py check` checks this computer before any room exists.
+`python app
+oom.py check` checks this computer before any room exists.
 
 From here on, your manager agent drives the room. You mostly talk to it.
 
 ## The daily loop
 
 ```powershell
-python room.py --room my-app new "Add pagination to the orders list"   # prints the path of task.md
+python app
+oom.py --room my-app new "Add pagination to the orders list"   # prints the path of task.md
 # the manager fills task.md: allowed_paths, verify, context, acceptance criteria, do-nots
-python room.py --room my-app dispatch T-0001     # run in the background; minutes, not seconds
-python room.py --room my-app show T-0001 --diff  # report, warnings, the change
-python room.py --room my-app verify T-0001       # after reading the diff
-python room.py --room my-app accept T-0001 -m "feat: paginate the orders list"
+python app
+oom.py --room my-app dispatch T-0001     # run in the background; minutes, not seconds
+python app
+oom.py --room my-app show T-0001 --diff  # report, warnings, the change
+python app
+oom.py --room my-app verify T-0001       # after reading the diff
+python app
+oom.py --room my-app accept T-0001 -m "feat: paginate the orders list"
 ```
 
 | Decision | Command |
@@ -155,8 +172,8 @@ writes tasks, runs `room.py`, reads diffs, and decides. It works with:
 
    ```text
    You are the technical lead for this repository. You may delegate one well-defined task at a time
-   to an executor through The Foreman. Room command: python "C:/Tools/the-foreman/room.py" --room my-app
-   Read C:/Tools/the-foreman/docs/OPERATOR-GUIDE.md before the first task and follow it.
+   to an executor through The Foreman. Room command: python "C:/Tools/the-foreman/app/room.py" --room my-app
+   Read C:/Tools/the-foreman/app/docs/OPERATOR-GUIDE.md before the first task and follow it.
    Rules: never accept on the executor's report alone; read the diff, then run `verify`, then `accept`.
    Run `dispatch` as a background command and do not edit the repository while it runs.
    Never push, never skip git hooks, never edit room state files by hand.

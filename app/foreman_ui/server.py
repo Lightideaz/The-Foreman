@@ -17,8 +17,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from connect_room import __version__
+
 from . import stacks
-from .commands import TOOL_HOME, Commands, InvalidInput, console_python, run, suggest_room_name, task_id
+from .commands import DEFAULT_ROOMS_DIR, TOOL_HOME, Commands, InvalidInput, console_python, run, suggest_room_name, task_id
 
 STATIC = Path(__file__).with_name("static")
 PICK_FOLDER = Path(__file__).with_name("pick_folder.py")
@@ -60,6 +62,26 @@ def check_request(method: str, path: str, query_token: str | None, headers: dict
     if not same_token(query_token, token):
         return "missing or wrong token"
     return None
+
+
+RELEASE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\s+[—-]\s+(\d{4}-\d{2}-\d{2})\s*$")
+
+
+def parse_changelog(text: str, limit: int = 10) -> list[dict]:
+    """`## 1.1.0 — 2026-11-21` headings with `- item` bullets → [{version, date, items}], newest first."""
+    releases: list[dict] = []
+    for line in text.splitlines():
+        m = RELEASE.match(line.strip())
+        if m:
+            releases.append({"version": m.group(1), "date": m.group(2), "items": []})
+        elif releases and line.startswith("- "):
+            releases[-1]["items"].append(line[2:].strip().replace("`", ""))
+    return releases[:limit]
+
+
+def copyright_line(license_text: str) -> str:
+    m = re.search(r"^Copyright \(c\) (.+)$", license_text, re.M)
+    return f"© {m.group(1).strip()}" if m else ""
 
 
 def inside(child: Path, parent: Path) -> bool:
@@ -228,7 +250,21 @@ class Handler(BaseHTTPRequestHandler):
     def api_info(self, query: dict, body: dict) -> dict:
         c = self.server.commands
         return {"tool_home": str(TOOL_HOME), "room_py": str(TOOL_HOME / "room.py"), "rooms_dir": str(c.rooms_dir),
-                "python": sys.executable, "default_rooms_dir": c.rooms_dir == (TOOL_HOME / "rooms").resolve()}
+                "python": sys.executable, "default_rooms_dir": c.rooms_dir == DEFAULT_ROOMS_DIR.resolve()}
+
+    def api_about(self, query: dict, body: dict) -> dict:
+        def read(name: str) -> str:
+            try:
+                return (TOOL_HOME / name).read_text(encoding="utf-8")
+            except OSError:
+                return ""
+        license_text = read("LICENSE")
+        changelog = parse_changelog(read("CHANGELOG.md"))
+        version = __version__
+        released = next((r["date"] for r in changelog if r["version"] == version), "")
+        return {"version": version, "released": released, "copyright": copyright_line(license_text),
+                "license": license_text.splitlines()[0].strip() if license_text else "",
+                "changelog": changelog}
 
     def api_machine(self, query: dict, body: dict) -> dict:
         return self._room_json(self.server.commands.check())
@@ -307,6 +343,7 @@ class Handler(BaseHTTPRequestHandler):
 
 ROUTES = {
     ("GET", "/api/info"): Handler.api_info,
+    ("GET", "/api/about"): Handler.api_about,
     ("GET", "/api/machine"): Handler.api_machine,
     ("GET", "/api/rooms"): Handler.api_rooms,
     ("GET", "/api/show"): Handler.api_show,

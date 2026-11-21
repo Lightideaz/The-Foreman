@@ -305,6 +305,13 @@ class LiveServerTests(unittest.TestCase):
                                                                            "Content-Type": "application/json"})
         self.assertEqual(r.status, 400)
 
+    def test_about(self):
+        from connect_room import __version__
+        r, body = self.request("GET", "/api/about")
+        d = json.loads(body)
+        self.assertEqual((r.status, d["version"], d["license"]), (200, __version__, "MIT License"))
+        self.assertTrue(d["copyright"].startswith("© ") and d["changelog"] and d["released"])
+
     def test_detect_reads_a_repository(self):
         repo = make_repo(Path(self._tmp.name) / "detect")
         (repo / "go.mod").write_text("module x\n", encoding="utf-8")
@@ -354,6 +361,32 @@ class RoomPyAdditionTests(RoomCase):
             rc, _, err = run_cli("--room", Path(d) / "r", "init", "--repo", self.repo, "--verify", "a\nb")
             self.assertEqual(rc, 2, err)
             self.assertFalse((Path(d) / "r").exists())
+
+
+class AboutTests(unittest.TestCase):
+    def test_parse_changelog(self):
+        text = "\n".join(["# Changelog", "", "intro", "", "## 2.0.0 — 2027-01-02", "", "- Big `thing`", "- Other",
+                          "", "## 1.0.0 - 2026-01-01", "- First", "not a bullet", ""])
+        self.assertEqual(server.parse_changelog(text), [
+            {"version": "2.0.0", "date": "2027-01-02", "items": ["Big thing", "Other"]},
+            {"version": "1.0.0", "date": "2026-01-01", "items": ["First"]}])
+        self.assertEqual(server.parse_changelog("nothing here"), [])
+
+    def test_changelog_and_version_agree(self):
+        from connect_room import __version__
+        releases = server.parse_changelog((TOOL_HOME / "CHANGELOG.md").read_text(encoding="utf-8"))
+        self.assertEqual(releases[0]["version"], __version__)
+        self.assertTrue(all(r["items"] for r in releases))
+
+    def test_copyright_line(self):
+        self.assertEqual(server.copyright_line("MIT License\n\nCopyright (c) 2026 Someone\n"), "© 2026 Someone")
+        self.assertEqual(server.copyright_line("no notice"), "")
+
+    def test_layout_keeps_rooms_next_to_app(self):
+        from connect_room import state, store
+        self.assertEqual(store.ROOMS_HOME, TOOL_HOME.parent / "rooms")
+        self.assertEqual(state.resolve_room_dir("demo"), TOOL_HOME.parent / "rooms" / "demo")
+        self.assertEqual(commands.DEFAULT_ROOMS_DIR, TOOL_HOME.parent / "rooms")
 
 
 class NeutralityTests(unittest.TestCase):

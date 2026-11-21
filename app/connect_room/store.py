@@ -9,7 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-TOOL_HOME = Path(__file__).resolve().parent.parent
+TOOL_HOME = Path(__file__).resolve().parent.parent          # <root>/app: the tool itself
+ROOMS_HOME = TOOL_HOME.parent / "rooms"                     # <root>/rooms: local, never committed
 
 # Indirection so tests can simulate the transient file locks that antivirus scanners cause on Windows.
 _replace = os.replace

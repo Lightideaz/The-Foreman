@@ -13,7 +13,7 @@ from pathlib import Path
 
 TOOL_HOME = Path(__file__).resolve().parent.parent
 ROOM_PY = TOOL_HOME / "room.py"
-DEFAULT_ROOMS_DIR = TOOL_HOME / "rooms"
+DEFAULT_ROOMS_DIR = TOOL_HOME.parent / "rooms"
 
 ALLOWED = frozenset({"check", "list", "status", "show", "doctor", "init", "pause", "unpause", "stop"})
 ROOM_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")

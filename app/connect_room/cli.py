@@ -29,7 +29,7 @@ def _parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True, metavar="command")
     s = sub.add_parser("list", help="list the projects (rooms) this tool knows")
     s.add_argument("--json", action="store_true", help="every room's status and latest round evidence")
-    s.add_argument("--rooms-dir", type=Path, help="look for rooms here instead of the tool's rooms/ folder")
+    s.add_argument("--rooms-dir", type=Path, help="look for rooms here instead of the rooms/ folder next to app/")
     s = sub.add_parser("check", help="check this machine (python, git, agent) without a room")
     s.add_argument("--agent", default=DEFAULT_AGENT)
     s.add_argument("--json", action="store_true")
@@ -190,7 +190,7 @@ def _set_list(text: str, key: str, values: list[str]) -> str:
 
 
 def cmd_list(rooms_dir: Path | None = None) -> list[str]:
-    rooms_dir = rooms_dir or store.TOOL_HOME / "rooms"
+    rooms_dir = rooms_dir or store.ROOMS_HOME
     dirs = sorted(p for p in rooms_dir.iterdir() if (p / "room.toml").exists()) if rooms_dir.is_dir() else []
     rows = []
     for d in dirs:
@@ -207,7 +207,7 @@ def cmd_list(rooms_dir: Path | None = None) -> list[str]:
 
 def list_data(rooms_dir: Path | None = None) -> list[dict]:
     """Every room with its status and the evidence of its latest round (for dashboards)."""
-    rooms_dir = rooms_dir or store.TOOL_HOME / "rooms"
+    rooms_dir = rooms_dir or store.ROOMS_HOME
     dirs = sorted(p for p in rooms_dir.iterdir() if (p / "room.toml").exists()) if rooms_dir.is_dir() else []
     rows = []
     for d in dirs:
@@ -510,7 +510,7 @@ def doctor_results(room_dir: Path) -> list[dict]:
     if room.paused is not None:
         res.add("INFO", "paused", "room is paused")
     for problem in status_data(room)["problems"]:
-        res.add("WARN", "problem", problem, "Run `status`; it recovers an interrupted round")
+        res.add("WARN", "problem", problem, "Ask your manager agent to check the room: its next room command recovers the round")
     return res
 
 

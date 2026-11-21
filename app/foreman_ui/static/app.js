@@ -124,7 +124,7 @@ function goOffline(message) {
 
 /* ------------------------------------------------------------------ routing */
 
-const VIEWS = ["rooms", "setup", "guide", "add"];
+const VIEWS = ["rooms", "setup", "guide", "about", "add"];
 
 function route() {
   const name = (location.hash || "#rooms").slice(1);
@@ -135,6 +135,46 @@ function route() {
     else a.removeAttribute("aria-current");
   }
   if (view === "add" && (!state.wiz || state.step === 4)) resetWizard();
+}
+
+/* ------------------------------------------------------------------ about */
+
+function formatDate(iso) {
+  const t = Date.parse(`${iso}T12:00:00`);
+  return Number.isNaN(t) ? iso : new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+async function loadAbout() {
+  let a;
+  try {
+    a = await api("/api/about");
+  } catch {
+    return;
+  }
+  $("version-tag").textContent = `v${a.version}`;
+  $("about-version").textContent = `Version ${a.version}`;
+  if (a.released) {
+    $("about-released").textContent = `Released ${formatDate(a.released)}`;
+    $("about-released").hidden = false;
+  }
+  $("about-facts").replaceChildren(
+    kv("Version", a.version),
+    kv("Released", a.released ? formatDate(a.released) : "-"),
+    kv("License", a.license || "-"),
+    kv("Platform", "Windows 10 and 11"),
+    kv("Requires", "Python 3.11+, Git 2.40+"),
+    kv("Executor", "Google Antigravity CLI (agy)"),
+    kv("Dependencies", "None"));
+  $("changelog").replaceChildren(...(a.changelog || []).map((r, i) => el("li", { class: `release${i === 0 ? " latest" : ""}` },
+    el("div", { class: "release-head" }, el("b", { text: r.version }),
+       i === 0 ? chip("Latest", "neutral") : null,
+       el("span", { class: "muted small", text: formatDate(r.date) })),
+    el("ul", {}, r.items.map((t) => el("li", { text: t }))))));
+  const year = (a.copyright.match(/\d{4}/) || [""])[0];
+  const owner = a.copyright.replace(/^©\s*\d{4}\s*/, "");
+  $("about-legal").textContent = a.copyright
+    ? `Copyright © ${year} ${owner}. All rights reserved. Licensed under the ${a.license || "MIT License"}.`
+    : "";
 }
 
 /* ------------------------------------------------------------------ machine checks */
@@ -199,7 +239,8 @@ function renderSetup() {
   if (!info) return;
   $("paths").replaceChildren(kv("The Foreman", info.tool_home), kv("Rooms", info.rooms_dir),
                              kv("room.py", info.room_py), kv("Python", info.python));
-  $("docs").replaceChildren(kv("Manager playbook", `${info.tool_home}\\docs\\OPERATOR-GUIDE.md`),
+  $("docs").replaceChildren(kv("Read me first", `${info.tool_home}\\README.md`),
+                            kv("Manager playbook", `${info.tool_home}\\docs\\OPERATOR-GUIDE.md`),
                             kv("Design and safety", `${info.tool_home}\\docs\\DESIGN.md`),
                             kv("This UI", `${info.tool_home}\\docs\\UI-DESIGN.md`));
   const cmd = roomCommand("my-app");
@@ -783,6 +824,7 @@ async function start() {
   renderSetup();
   loadMachine();
   loadRooms();
+  loadAbout();
 }
 
 start();

@@ -90,8 +90,9 @@ The page refreshes every 5 s while a round runs, every 30 s otherwise.
 ### 3.1 Shape
 
 ```text
-foreman_ui.py                 entry: start server, open the default browser, print the URL
-foreman_ui/
+Foreman.cmd                   (tool root) double-click launcher: runs app\foreman_ui.py with pythonw
+app/foreman_ui.py             entry: start server, open the default browser, print the URL
+app/foreman_ui/
   server.py                   http.server on 127.0.0.1, token checks, JSON API, static files
   commands.py                 builds argv lists for room.py from UI actions (pure, tested)
   stacks.py + stacks.toml     stack detection from marker files (pure, tested)

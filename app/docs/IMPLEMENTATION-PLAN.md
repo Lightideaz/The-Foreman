@@ -9,7 +9,7 @@
 ## 1. Build rules
 
 1. **Python 3.11+ standard library only.** No `pip install`, no virtualenv. Allowed modules include `argparse`, `tomllib`, `json`, `subprocess`, `pathlib`, `ctypes`, `fnmatch`, `datetime`, `tempfile`, `shutil`, `unittest`.
-2. **Build only inside the tool home** (`C:\Tools	he-foreman\`). Project repositories are not touched until Phase 5, and only after the user's go-ahead. The tool stays project-neutral; project specifics live in rooms.
+2. **Build only inside the tool home** (`C:\Tools\the-foreman\`). Project repositories are not touched until Phase 5, and only after the user's go-ahead. The tool stays project-neutral; project specifics live in rooms.
 3. **Tests never touch real repos.** Every git test creates its own repository in a `tempfile.TemporaryDirectory()`.
 4. **Most of the tool is tested without quota.** The fake agent (§4) emulates the agy CLI. Real agents run only in Phase 0 and Phase 5.
 5. **Windows first.** Tests run on this Windows machine. Do not break POSIX needlessly, but do not build POSIX-only paths.

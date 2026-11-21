@@ -36,7 +36,7 @@ The Foreman removes manual copy-paste between **Claude Code** (manager and techn
 | Gemini CLI (`gemini`) | Not installed. Not used. |
 | Python | 3.12.4 (`tomllib` available) |
 | Git | 2.55.0.windows.2 |
-| Tool home | `C:\Tools	he-foreman` (project-neutral; §3) |
+| Tool home | `C:\Tools\the-foreman` (project-neutral; §3) |
 | Projects | One room per project under `rooms/` (§3.3). Each room's specifics live in `rooms/<room>/PROJECT-NOTES.md`. |
 
 Each project must have exactly **one** working copy that agents use. Its room names it.
@@ -118,16 +118,19 @@ Each project must have exactly **one** working copy that agents use. Its room na
 ### 3.1 Tool home (outside every project repository)
 
 ```
-C:\Tools	he-foreman\
-  room.py                     entry point
-  connect_room\               package (standard library only)
-  prompts\gemini-preamble.md  injected before every task (Appendix A)
-  templates\                  room.toml, task.md, feedback.md, PROJECT-NOTES.md, result.schema.json,
-                              agy-settings.base.json
-  docs\                       DESIGN, IMPLEMENTATION-PLAN, ACCEPTANCE-TESTS, OPERATOR-GUIDE
-  tests\                      unittest suite + fake agent
-  acceptance\                 Phase 0 sandbox + RESULTS.md
-  rooms\<room-name>\          runtime data per project (gitignored)
+C:\Tools\the-foreman\
+  Foreman.cmd                   opens the local UI (docs/UI-DESIGN.md)
+  rooms\<room-name>\            runtime data per project (never committed)
+  app\
+    room.py                     entry point
+    connect_room\               package (standard library only)
+    foreman_ui.py, foreman_ui\  the local UI
+    prompts\gemini-preamble.md  injected before every task (Appendix A)
+    templates\                  room.toml, task.md, feedback.md, PROJECT-NOTES.md, result.schema.json,
+                                agy-settings.base.json
+    docs\                       DESIGN, IMPLEMENTATION-PLAN, ACCEPTANCE-TESTS, OPERATOR-GUIDE, UI-DESIGN
+    tests\                      unittest suite + fake agent
+    acceptance\                 Phase 0 sandbox + RESULTS.md
 ```
 
 - The tool home may be moved. Nothing inside a project references it, and the code computes its own location.

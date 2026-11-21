@@ -22,7 +22,7 @@ from foreman_ui.server import UIServer  # noqa: E402
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Open The Foreman's local control panel in your browser.")
-    p.add_argument("--rooms-dir", type=Path, help="rooms folder (default: rooms/ next to room.py)")
+    p.add_argument("--rooms-dir", type=Path, help="rooms folder (default: rooms/ next to the app folder)")
     p.add_argument("--no-browser", action="store_true", help="print the address instead of opening it")
     p.add_argument("--idle-minutes", type=float, default=10, help="exit after this long without a visit")
     args = p.parse_args()
