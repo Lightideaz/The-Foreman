@@ -295,6 +295,7 @@ class LiveServerTests(unittest.TestCase):
         r, body = self.request("GET", "/api/info")
         self.assertEqual(r.status, 200)
         self.assertEqual(Path(json.loads(body)["rooms_dir"]), self.rooms.resolve())
+        self.assertTrue(Path(json.loads(body)["readme"]).is_file())   # .github/README.md, shown by GitHub
         r, body = self.request("POST", "/api/pause", body={"room": "../x", "reason": ""})
         self.assertEqual(r.status, 400)
         r, body = self.request("POST", "/api/open-folder", body={"room": "nope"})

@@ -277,6 +277,7 @@ class Handler(BaseHTTPRequestHandler):
     def api_info(self, query: dict, body: dict) -> dict:
         c = self.server.commands
         return {"tool_home": str(TOOL_HOME), "room_py": str(TOOL_HOME / "room.py"), "rooms_dir": str(c.rooms_dir),
+                "readme": str(TOOL_HOME.parent / ".github" / "README.md"),
                 "python": sys.executable, "default_rooms_dir": c.rooms_dir == DEFAULT_ROOMS_DIR.resolve()}
 
     def api_about(self, query: dict, body: dict) -> dict:

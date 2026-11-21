@@ -304,7 +304,7 @@ function renderSetup() {
   if (!info) return;
   $("paths").replaceChildren(kv("The Foreman", info.tool_home), kv("Rooms", info.rooms_dir),
                              kv("room.py", info.room_py), kv("Python", info.python));
-  $("docs").replaceChildren(kv("Read me first", `${info.tool_home}\\README.md`),
+  $("docs").replaceChildren(kv("Read me first", info.readme),
                             kv("Manager playbook", `${info.tool_home}\\docs\\OPERATOR-GUIDE.md`),
                             kv("Design and safety", `${info.tool_home}\\docs\\DESIGN.md`),
                             kv("This UI", `${info.tool_home}\\docs\\UI-DESIGN.md`));

@@ -75,7 +75,7 @@ The Foreman automates the relay and keeps the human-grade checks:
 # 1. Get the tool
 git clone <this repository> C:\Tools\the-foreman
 cd C:\Tools\the-foreman
-python -m unittest discover -s app\tests      # 106 tests, about two minutes
+python -m unittest discover -s app\tests      # 114 tests, about two minutes
 ```
 
 The folder holds three things:
@@ -86,6 +86,8 @@ C:\Tools\the-foreman\
   app\            the tool: room.py, the UI, docs, tests
   rooms\          one folder per project, local to this computer (never committed)
 ```
+
+(Plus `.github\`, which holds only this README so GitHub can show it.)
 
 ### The easy way: the local UI
 
@@ -102,7 +104,7 @@ report.
 The UI never dispatches, verifies or accepts work: that stays with your manager agent. It runs on
 127.0.0.1 only, with a one-time token per launch, makes no network requests, and stops with the Quit
 link at the bottom of the page, Ctrl+C in its terminal, or after 10 idle minutes. If it cannot start,
-a message box points to `foreman_ui.log`. Details: `docs/UI-DESIGN.md`.
+a message box points to `app\foreman_ui.log`. Details: [`app/docs/UI-DESIGN.md`](/app/docs/UI-DESIGN.md).
 
 ### The command-line way
 
@@ -167,7 +169,7 @@ writes tasks, runs `room.py`, reads diffs, and decides. It works with:
 ### Setting up a manager agent
 
 1. **Open the agent in your project folder** and give it access to the Foreman folder too.
-2. **Hand it the rules.** Point it at `docs/OPERATOR-GUIDE.md`, or paste this into its project
+2. **Hand it the rules.** Point it at [`app/docs/OPERATOR-GUIDE.md`](/app/docs/OPERATOR-GUIDE.md), or paste this into its project
    instructions (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, or the chat's custom instructions):
 
    ```text
@@ -218,16 +220,16 @@ silently run anything outside the sandbox, and it cannot reach the network or yo
 list blocks git writes, package managers, network tools and shells. Secret-looking environment variables
 are scrubbed before launch. Your own test commands run *outside* the sandbox only through `verify`, after
 the manager has read the diff, because that is the moment arbitrary new code executes on your machine.
-See `docs/DESIGN.md` for the full threat model and the agy behaviours it is built on.
+See [`app/docs/DESIGN.md`](/app/docs/DESIGN.md) for the full threat model and the agy behaviours it is built on.
 
 ## Documentation
 
 | File | For |
 |---|---|
-| `docs/OPERATOR-GUIDE.md` | The manager agent's playbook |
-| `docs/UI-DESIGN.md` | The local UI: screens and security model |
-| `docs/DESIGN.md` | Architecture, state machine, permission models, observed agy behaviour |
-| `docs/ACCEPTANCE-TESTS.md` | How the tool was proven against the real agy CLI |
+| [`app/docs/OPERATOR-GUIDE.md`](/app/docs/OPERATOR-GUIDE.md) | The manager agent's playbook |
+| [`app/docs/UI-DESIGN.md`](/app/docs/UI-DESIGN.md) | The local UI: screens and security model |
+| [`app/docs/DESIGN.md`](/app/docs/DESIGN.md) | Architecture, state machine, permission models, observed agy behaviour |
+| [`app/docs/ACCEPTANCE-TESTS.md`](/app/docs/ACCEPTANCE-TESTS.md) | How the tool was proven against the real agy CLI |
 
 ## Limitations
 
@@ -238,4 +240,4 @@ See `docs/DESIGN.md` for the full threat model and the agy behaviours it is buil
 
 ## License
 
-[MIT](LICENSE).
+[MIT](/app/LICENSE) · Copyright © 2026 Lightideaz.com. Release notes: [`app/CHANGELOG.md`](/app/CHANGELOG.md).
