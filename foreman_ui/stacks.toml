@@ -1,0 +1,118 @@
+# Stack catalogue for the Add-a-project wizard (docs/UI-DESIGN.md §2.3).
+# Generic knowledge about build tools, not about any one project. It lives in a data file because it
+# names package managers, which the project-neutrality test keeps out of the tool's code.
+#
+# Detection only reads marker files at the repository root; nothing in the repository is executed.
+# Every suggestion is shown to the user with a checkbox. `probe` is a sample command: a deny rule is
+# suggested only when the base agy-settings template does not already block it.
+
+node_scripts          = ["typecheck", "lint", "test"]   # suggested and ticked when package.json defines them
+node_optional_scripts = ["build"]                       # suggested, unticked
+
+[[node_manager]]
+name      = "pnpm"
+lockfiles = ["pnpm-lock.yaml"]
+run       = "pnpm run {script}"
+test      = "pnpm test"
+deny      = '^(pnpm|pnpx)( .*)?$'
+probe     = "pnpm install"
+
+[[node_manager]]
+name      = "yarn"
+lockfiles = ["yarn.lock"]
+run       = "yarn run {script}"
+test      = "yarn test"
+deny      = '^yarn( .*)?$'
+probe     = "yarn add left-pad"
+
+[[node_manager]]
+name      = "bun"
+lockfiles = ["bun.lockb", "bun.lock"]
+run       = "bun run {script}"
+test      = "bun run test"
+deny      = '^(bun|bunx)( .*)?$'
+probe     = "bun add left-pad"
+
+[[node_manager]]                      # last entry: the default when no lockfile matches
+name      = "npm"
+lockfiles = ["package-lock.json", "npm-shrinkwrap.json"]
+run       = "npm run {script}"
+test      = "npm test"
+deny      = '^(npm|npx)( .*)?$'
+probe     = "npm install"
+
+[[stack]]
+id      = "python"
+label   = "Python"
+kind    = "python"
+markers = ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "requirements-dev.txt"]
+deny    = [{ rule = '^(poetry|pipenv|conda|pdm|hatch)( .*)?$', probe = "poetry add requests", reason = "Python package managers can install code" }]
+
+[[stack]]
+id       = "gradle"
+label    = "Gradle (wrapper)"
+markers  = ["gradlew.bat"]
+commands = ['.\gradlew.bat test']
+
+[[stack]]
+id       = "gradle-global"
+label    = "Gradle"
+markers  = ["build.gradle", "build.gradle.kts"]
+skip_if  = ["gradlew.bat"]
+commands = ["gradle test"]
+
+[[stack]]
+id       = "maven"
+label    = "Maven (wrapper)"
+markers  = ["mvnw.cmd"]
+commands = ['.\mvnw.cmd -q test']
+
+[[stack]]
+id       = "maven-global"
+label    = "Maven"
+markers  = ["pom.xml"]
+skip_if  = ["mvnw.cmd"]
+commands = ["mvn -q test"]
+
+[[stack]]
+id       = "rust"
+label    = "Rust (Cargo)"
+markers  = ["Cargo.toml"]
+commands = ["cargo test"]
+deny     = [{ rule = '^cargo (add|install|update|publish)( .*)?$', probe = "cargo add serde", reason = "cargo add/install/update change dependencies" }]
+
+[[stack]]
+id       = "go"
+label    = "Go"
+markers  = ["go.mod"]
+commands = ["go test ./..."]
+optional = ["go vet ./..."]
+deny     = [{ rule = '^go (get|install|mod)( .*)?$', probe = "go get example.com/x", reason = "go get/install/mod change dependencies" }]
+
+[[stack]]
+id       = "dotnet"
+label    = ".NET"
+markers  = ["*.sln", "*.slnx", "*.csproj", "*.fsproj"]
+commands = ["dotnet test"]
+deny     = [{ rule = '^dotnet (add|restore|tool|new|nuget)( .*)?$', probe = "dotnet add package X", reason = "dotnet add/restore/tool change dependencies" }]
+
+[[stack]]
+id      = "php"
+label   = "PHP (Composer)"
+kind    = "composer"
+markers = ["composer.json"]
+deny    = [{ rule = '^composer( .*)?$', probe = "composer require x/y", reason = "Composer installs packages" }]
+
+[[stack]]
+id       = "ruby"
+label    = "Ruby (Bundler)"
+markers  = ["Gemfile"]
+commands = ["bundle exec rake test"]
+deny     = [{ rule = '^(gem|bundle) (install|add|update)( .*)?$', probe = "bundle add rails", reason = "gem/bundle install code" }]
+
+[protect]
+ci         = [".github/", ".gitlab-ci.yml", "azure-pipelines.yml", ".circleci/"]
+lockfiles  = ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "poetry.lock",
+              "uv.lock", "Cargo.lock", "go.sum", "composer.lock", "Gemfile.lock", "packages.lock.json"]
+dir_names  = ["migrations"]              # folders with these names, up to three levels deep
+skip_dirs  = [".git", "node_modules", ".venv", "venv", "build", "dist", "target", "bin", "obj", "vendor"]

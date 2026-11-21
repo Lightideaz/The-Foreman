@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
+import re
 import subprocess
 import sys
 import traceback
@@ -16,6 +16,8 @@ from .errors import RoomError, UsageError, Refused
 from .state import Room, new_room_state, resolve_room_dir
 
 TEMPLATES = store.TOOL_HOME / "templates"
+DEFAULT_AGENT = str(Path.home() / ".gemini" / "bin" / "agy.exe")
+MIN_PYTHON, MIN_GIT = (3, 11), (2, 40)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -25,11 +27,22 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--room", help="room name (under rooms/) or a path to a room folder; "
                                   "required for every command except `list`")
     sub = p.add_subparsers(dest="command", required=True, metavar="command")
-    sub.add_parser("list", help="list the projects (rooms) this tool knows")
+    s = sub.add_parser("list", help="list the projects (rooms) this tool knows")
+    s.add_argument("--json", action="store_true", help="every room's status and latest round evidence")
+    s.add_argument("--rooms-dir", type=Path, help="look for rooms here instead of the tool's rooms/ folder")
+    s = sub.add_parser("check", help="check this machine (python, git, agent) without a room")
+    s.add_argument("--agent", default=DEFAULT_AGENT)
+    s.add_argument("--json", action="store_true")
     s = sub.add_parser("init", help="create a room for a repository")
     s.add_argument("--repo", required=True)
     s.add_argument("--base", default="main")
-    s.add_argument("--agent", default=str(Path.home() / ".gemini" / "bin" / "agy.exe"))
+    s.add_argument("--agent", default=DEFAULT_AGENT)
+    s.add_argument("--verify", action="append", default=[], metavar="CMD",
+                   help="a verify.default_commands entry (repeatable)")
+    s.add_argument("--protect", action="append", default=[], metavar="PATH",
+                   help="a policy.protected_paths entry (repeatable)")
+    s.add_argument("--deny", action="append", default=[], metavar="RULE",
+                   help="an extra executor deny rule for agy-settings.base.json (repeatable)")
     s = sub.add_parser("status", help="room state, open task, running round, problems")
     s.add_argument("--json", action="store_true")
     s = sub.add_parser("new", help="create a task and print the path of its task.md")
@@ -40,6 +53,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("task")
     s.add_argument("--round", type=int)
     s.add_argument("--diff", action="store_true", help="append the task's diff stat")
+    s.add_argument("--json", action="store_true", help="round evidence and report as JSON")
     s = sub.add_parser("verify", help="re-run the verify commands on the current tree")
     s.add_argument("task")
     s = sub.add_parser("rework", help="open the next round and its feedback.md")
@@ -59,7 +73,8 @@ def _parser() -> argparse.ArgumentParser:
     s = sub.add_parser("pause", help="block new dispatches")
     s.add_argument("reason", nargs="?", default="")
     sub.add_parser("unpause", help="allow dispatches again")
-    sub.add_parser("doctor", help="check the room, repo, agent and environment")
+    s = sub.add_parser("doctor", help="check the room, repo, agent and environment")
+    s.add_argument("--json", action="store_true", help="results with a fix hint each")
     return p
 
 
@@ -79,8 +94,13 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return int(exc.code or 0)
     if args.command == "list":
-        print("\n".join(cmd_list()))
+        print(json.dumps(list_data(args.rooms_dir), ensure_ascii=False, indent=2) if args.json
+              else "\n".join(cmd_list(args.rooms_dir)))
         return 0
+    if args.command == "check":
+        results = machine_checks(args.agent)
+        print(json.dumps(results, ensure_ascii=False, indent=2) if args.json else "\n".join(fmt_results(results)))
+        return results_code(results)
     if not args.room:
         print(f"error: --room is required for `{args.command}`", file=sys.stderr)
         return 2
@@ -89,9 +109,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init":
             lines = cmd_init(room_dir, args)
         elif args.command == "doctor":
-            code, lines = cmd_doctor(room_dir)
-            print("\n".join(lines))
-            return code
+            results = doctor_results(room_dir)
+            print(json.dumps(results, ensure_ascii=False, indent=2) if args.json
+                  else "\n".join(fmt_results(results)))
+            return results_code(results)
+        elif args.command == "show" and args.json:
+            print(json.dumps(show_data(Room.open(room_dir), args.task, args.round), ensure_ascii=False, indent=2))
+            return 0
         else:
             lines = COMMANDS[args.command](Room.open(room_dir), args)
         print("\n".join(lines))
@@ -112,26 +136,61 @@ def cmd_init(room_dir: Path, args: argparse.Namespace) -> list[str]:
     repo = Path(args.repo).resolve()
     if not repo.is_dir():
         raise UsageError(f"repo folder not found: {repo}")
-    room_dir.mkdir(parents=True, exist_ok=True)
+    verify_cmds = _clean_list(getattr(args, "verify", []), "--verify")
+    protected = _clean_list(getattr(args, "protect", []), "--protect")
+    deny = _clean_list(getattr(args, "deny", []), "--deny")
     text = store.read_text(TEMPLATES / "room.toml")
     for key, value in {"@@NAME@@": room_dir.name, "@@REPO@@": str(repo), "@@BASE@@": args.base,
                        "@@AGENT@@": args.agent}.items():
         text = text.replace(key, config.toml_str(value))
+    text = _set_list(text, "default_commands", verify_cmds)
+    text = _set_list(text, "protected_paths", protected)
+    settings_text = store.read_text(TEMPLATES / "agy-settings.base.json")
+    if deny:
+        settings = json.loads(settings_text)
+        rules = settings["permissions"]["deny"]
+        rules += [r for r in deny if r not in rules]
+        settings_text = json.dumps(settings, ensure_ascii=False, indent=2) + "\n"
+    room_dir.mkdir(parents=True, exist_ok=True)
     store.atomic_write_text(room_dir / "room.toml", text)
-    shutil.copyfile(TEMPLATES / "agy-settings.base.json", room_dir / "agy-settings.base.json")
+    store.atomic_write_text(room_dir / "agy-settings.base.json", settings_text)
     notes = store.read_text(TEMPLATES / "PROJECT-NOTES.md")
     store.atomic_write_text(room_dir / "PROJECT-NOTES.md",
                             notes.replace("@@NAME@@", room_dir.name).replace("@@REPO@@", str(repo)))
     store.write_json(room_dir / "state.json", new_room_state())
     Room.open(room_dir)
     store.append_event(room_dir, "room_created", repo=str(repo))
+    todo = [key for key, done in (("verify.default_commands", verify_cmds),
+                                  ("policy.protected_paths", protected)) if not done]
     return [f"room created: {room_dir}",
-            "next: set verify.default_commands and policy.protected_paths in room.toml, "
-            "fill in PROJECT-NOTES.md, then run `doctor`"]
+            "next: " + (f"set {' and '.join(todo)} in room.toml, " if todo else "")
+            + "fill in PROJECT-NOTES.md, then run `doctor`"]
 
 
-def cmd_list() -> list[str]:
-    rooms_dir = store.TOOL_HOME / "rooms"
+def _clean_list(values: list[str], flag: str) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        value = value.strip()
+        if not value or "\n" in value or "\r" in value:
+            raise UsageError(f"{flag} needs a non-empty, single-line value")
+        if value not in out:
+            out.append(value)
+    return out
+
+
+def _set_list(text: str, key: str, values: list[str]) -> str:
+    """Fill the template's one-line `key = []` with the given strings."""
+    if not values:
+        return text
+    marker = re.compile(rf"^({re.escape(key)}\s*=\s*)\[\]", re.M)
+    if not marker.search(text):
+        raise UsageError(f"template room.toml has no empty `{key}` list")
+    rendered = "[" + ", ".join(config.toml_str(v) for v in values) + "]"
+    return marker.sub(lambda m: m.group(1) + rendered, text, count=1)
+
+
+def cmd_list(rooms_dir: Path | None = None) -> list[str]:
+    rooms_dir = rooms_dir or store.TOOL_HOME / "rooms"
     dirs = sorted(p for p in rooms_dir.iterdir() if (p / "room.toml").exists()) if rooms_dir.is_dir() else []
     rows = []
     for d in dirs:
@@ -144,6 +203,67 @@ def cmd_list() -> list[str]:
         except RoomError as exc:
             rows.append(f"{d.name}: INVALID ({exc})")
     return rows or ["no rooms yet: run `room.py --room <name> init --repo <path>`"]
+
+
+def list_data(rooms_dir: Path | None = None) -> list[dict]:
+    """Every room with its status and the evidence of its latest round (for dashboards)."""
+    rooms_dir = rooms_dir or store.TOOL_HOME / "rooms"
+    dirs = sorted(p for p in rooms_dir.iterdir() if (p / "room.toml").exists()) if rooms_dir.is_dir() else []
+    rows = []
+    for d in dirs:
+        row: dict = {"name": d.name, "dir": str(d), "status": None, "latest": None, "error": None}
+        try:
+            room = Room.open(d)
+            row["status"] = status_data(room)
+            row["max_rounds"] = room.config["policy"]["max_rounds"]
+            row["timeout_minutes"] = room.config["agent"]["timeout_minutes"]
+            row["base_branch"] = room.config["project"]["base_branch"]
+            ids = room.task_ids()
+            if ids:
+                row["latest"] = show_data(room, ids[-1], None)
+        except RoomError as exc:
+            row["error"] = str(exc)
+        except (OSError, ValueError) as exc:
+            row["error"] = f"unreadable room: {exc}"
+        rows.append(row)
+    return rows
+
+
+RUN_KEYS = ("run_status", "result_status", "agent_status", "verdict_hint", "warnings", "notices",
+            "claim_mismatches", "duration_s", "open_issues_count", "questions_count")
+
+
+def show_data(room: Room, tid: str, round_no: int | None) -> dict:
+    task = room.load_task(tid)
+    try:
+        title = str(room.task_meta(tid)[0].get("title") or "")
+    except (RoomError, OSError, ValueError):
+        title = ""
+    n = round_no or task["rounds"]
+    history = task.get("history") or []
+    out: dict = {"task": task["id"], "title": title, "status": task["status"], "rounds": task["rounds"],
+                 "branch": task.get("branch"), "updated_at": history[-1].get("ts") if history else None, "task_dir": str(room.task_dir(task["id"])), "round": n,
+                 "round_dir": None, "run": None, "report": None}
+    if n == 0:
+        return out
+    rdir = room.round_dir(task["id"], n)
+    out["round_dir"] = str(rdir)
+    run = store.read_json(rdir / "run.json")
+    if run is not None:
+        summary = {k: run.get(k) for k in RUN_KEYS}
+        if run.get("run_status") == "ROOM_ERROR":
+            summary["error"] = run.get("error")
+        checks, verify = run.get("checks") or {}, run.get("verify") or {}
+        summary["checks"] = {k: checks.get(k) or [] for k in
+                             ("scope_violations", "protected_paths_touched", "sensitive_files")}
+        summary["verify"] = {"status": verify.get("status"), "commands": [
+            {k: c.get(k) for k in ("command", "agent_exit_code", "room_exit_code", "timed_out")}
+            for c in verify.get("commands") or []]}
+        out["run"] = summary
+    report = rdir / "report.md"
+    if report.exists():
+        out["report"] = store.read_text(report)
+    return out
 
 
 def status_data(room: Room) -> dict:
@@ -244,85 +364,154 @@ def _antigravity_grants(repo: Path) -> dict | None:
     return None
 
 
-def cmd_doctor(room_dir: Path) -> tuple[int, list[str]]:
-    results: list[tuple[str, str]] = []
+LINKS = {"python": "https://www.python.org/downloads/", "git": "https://git-scm.com/downloads",
+         "agent": "https://antigravity.google/"}
 
-    def add(level: str, text: str) -> None:
-        results.append((level, text))
 
-    def finish() -> tuple[int, list[str]]:
-        code = 2 if any(level == "FAIL" for level, _ in results) else 0
-        return code, [f"[{level}] {text}" for level, text in results]
+class _Results(list):
+    """Check results: dicts with level (OK, INFO, WARN, FAIL), check id, text, a plain fix hint and a link."""
 
-    add("OK" if sys.version_info >= (3, 11) else "FAIL", f"python {sys.version.split()[0]}")
+    def add(self, level: str, check: str, text: str, hint: str = "", url: str = "") -> None:
+        self.append({"level": level, "check": check, "text": text, "hint": hint, "url": url})
+
+
+def fmt_results(results: list[dict]) -> list[str]:
+    lines = []
+    for r in results:
+        lines.append(f"[{r['level']}] {r['text']}")
+        if r.get("hint") and r["level"] in ("WARN", "FAIL"):
+            lines.append(f"       fix: {r['hint']}" + (f" ({r['url']})" if r.get("url") else ""))
+    return lines
+
+
+def results_code(results: list[dict]) -> int:
+    return 2 if any(r["level"] == "FAIL" for r in results) else 0
+
+
+def _version_tuple(text: str) -> tuple[int, ...]:
+    m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", text)
+    return tuple(int(x) for x in m.groups() if x is not None) if m else ()
+
+
+def _template_tested_version() -> str:
+    m = re.search(r'^tested_version\s*=\s*"([^"]*)"', store.read_text(TEMPLATES / "room.toml"), re.M)
+    return m.group(1) if m else ""
+
+
+def _check_tools(res: _Results) -> None:
+    py = sys.version.split()[0]
+    res.add("OK" if sys.version_info >= MIN_PYTHON else "FAIL", "python", f"python {py}",
+            "" if sys.version_info >= MIN_PYTHON else "Install Python 3.11 or newer, then start The Foreman with it",
+            "" if sys.version_info >= MIN_PYTHON else LINKS["python"])
     try:
         out = subprocess.run(["git", "--version"], capture_output=True, text=True, timeout=30).stdout.strip()
-        add("OK", out)
     except (OSError, subprocess.TimeoutExpired):
-        add("FAIL", "git not found")
+        out = ""
+    if not out:
+        res.add("FAIL", "git", "git not found", "Install Git for Windows, then open a new terminal", LINKS["git"])
+    elif _version_tuple(out) < MIN_GIT:
+        res.add("WARN", "git", out, "Git 2.40 or newer is recommended: update Git for Windows", LINKS["git"])
+    else:
+        res.add("OK", "git", out)
+
+
+def _check_agent(res: _Results, agent_cfg: dict) -> None:
+    command = agent_cfg["command"]
+    if not Path(command).exists():
+        res.add("FAIL", "agent", f"agent command not found: {command}",
+                "Install the Antigravity CLI (agy), or point the room's agent.command at agy.exe", LINKS["agent"])
+        return
+    try:
+        version = agent.agent_version(agent_cfg)
+    except RoomError as exc:
+        res.add("FAIL", "agent", str(exc), "Run `agy --version` in a terminal to see why it fails", LINKS["agent"])
+        return
+    tested = agent_cfg.get("tested_version") or ""
+    same = not tested or version == tested
+    res.add("OK" if same else "WARN", "agent_version", f"agent {version}" + ("" if same else
+            f" (tested with {tested}; rerun acceptance tests A1-A2)"),
+            "" if same else "It probably works; rerun the acceptance tests in docs/ACCEPTANCE-TESTS.md to be sure")
+
+
+def machine_checks(agent_command: str = DEFAULT_AGENT) -> list[dict]:
+    """Checks that need no room: Python, Git, the agent binary and its version."""
+    res = _Results()
+    _check_tools(res)
+    _check_agent(res, {"command": agent_command, "args_prefix": [], "tested_version": _template_tested_version()})
+    res.add("INFO", "agent_sign_in", "agy sign-in is not checked (every known check costs a model call)",
+            "If agy has never run on this machine, run `agy` once in a terminal and sign in")
+    if proc.antigravity_ide_running():
+        res.add("INFO", "ide", "Antigravity IDE is running: keep its agent idle on a repo during dispatches")
+    return res
+
+
+def doctor_results(room_dir: Path) -> list[dict]:
+    res = _Results()
+    _check_tools(res)
     try:
         room = Room.open(room_dir)
-        add("OK", f"room.toml valid ({room_dir})")
+        res.add("OK", "room", f"room.toml valid ({room_dir})")
     except RoomError as exc:
-        add("FAIL", str(exc))
-        return finish()
+        res.add("FAIL", "room", str(exc), "Fix the reported key in room.toml (unknown keys are rejected)")
+        return res
     cfg, repo = room.config, room.repo
     if not repo.is_dir() or not gitops.is_repo(repo):
-        add("FAIL", f"repo is not a git repository: {repo}")
+        res.add("FAIL", "repo", f"repo is not a git repository: {repo}",
+                "Point project.repo in room.toml at the project's git working copy")
     else:
-        add("OK", f"repo {repo} (on {gitops.current_branch(repo) or 'a detached HEAD'})")
+        res.add("OK", "repo", f"repo {repo} (on {gitops.current_branch(repo) or 'a detached HEAD'})")
         base = cfg["project"]["base_branch"]
-        add("OK" if gitops.branch_exists(repo, base) else "FAIL", f"base branch {base}")
+        ok = gitops.branch_exists(repo, base)
+        res.add("OK" if ok else "FAIL", "base_branch", f"base branch {base}",
+                "" if ok else "Set project.base_branch in room.toml to a branch that exists")
         dirty = gitops.dirty_entries(repo)
-        add("OK" if not dirty else "WARN", "working tree clean" if not dirty else
-            f"working tree not clean ({len(dirty)}): {'; '.join(dirty[:5])} - dispatch will refuse")
+        res.add("OK" if not dirty else "WARN", "clean_tree", "working tree clean" if not dirty else
+                f"working tree not clean ({len(dirty)}): {'; '.join(dirty[:5])} - dispatch will refuse",
+                "" if not dirty else "Commit or stash your changes in the project before a dispatch")
         operation = gitops.operation_in_progress(repo)
         if operation:
-            add("WARN", f"a git {operation} is in progress")
-    command = cfg["agent"]["command"]
-    if not Path(command).exists():
-        add("FAIL", f"agent command not found: {command}")
-    else:
-        try:
-            version = agent.agent_version(cfg["agent"])
-            tested = cfg["agent"]["tested_version"]
-            same = not tested or version == tested
-            add("OK" if same else "WARN", f"agent {version}" + ("" if same else
-                f" (tested with {tested}; rerun acceptance tests A1-A2)"))
-        except RoomError as exc:
-            add("FAIL", str(exc))
+            res.add("WARN", "git_operation", f"a git {operation} is in progress",
+                    f"Finish or abort the {operation} in the project first")
+    _check_agent(res, cfg["agent"])
     model = cfg["agent"]["permission_model"]
     try:
         s = agent.build_settings(store.read_text(room.dir / cfg["agent"]["settings_file"]), repo, [], [], model)
-        add("OK", f"agent settings valid ({len(s['permissions']['allow'])} allow, "
-                  f"{len(s['permissions']['deny'])} deny rules)")
+        res.add("OK", "settings", f"agent settings valid ({len(s['permissions']['allow'])} allow, "
+                                  f"{len(s['permissions']['deny'])} deny rules)")
     except (OSError, RoomError) as exc:
-        add("FAIL", f"agent settings: {exc}")
+        res.add("FAIL", "settings", f"agent settings: {exc}",
+                f"Fix {cfg['agent']['settings_file']} in the room folder (it must be valid JSON)")
     if model == "sandbox":
-        add("OK", "permission model: sandbox (every agent command stays in the sandbox; a bypass ends the round)")
+        res.add("OK", "permission_model",
+                "permission model: sandbox (every agent command stays in the sandbox; a bypass ends the round)")
     else:
-        add("WARN", "permission model: allowlist (the agent can run allowed commands outside the sandbox, F17)")
+        res.add("WARN", "permission_model",
+                "permission model: allowlist (the agent can run allowed commands outside the sandbox, F17)",
+                "Use agent.permission_model = \"sandbox\" unless you have a documented reason")
     room_run = cfg["verify"]["room_run"]
-    add("OK" if room_run == "after_review" else "INFO",
-        f"verify.room_run: {room_run}" + (" (The Foreman runs agent code unsandboxed only after review)"
-                                          if room_run == "after_review" else ""))
+    res.add("OK" if room_run == "after_review" else "INFO", "room_run",
+            f"verify.room_run: {room_run}" + (" (The Foreman runs agent code unsandboxed only after review)"
+                                              if room_run == "after_review" else ""))
     grants = _antigravity_grants(repo)
     if grants is None:
-        add("OK", "no Antigravity project entry for this repo")
+        res.add("OK", "grants", "no Antigravity project entry for this repo")
     elif grants:
-        add("WARN", "Antigravity has saved permission grants for this repo; they widen headless runs: "
-            + json.dumps(grants, ensure_ascii=False)[:200])
+        res.add("WARN", "grants", "Antigravity has saved permission grants for this repo; they widen headless runs: "
+                + json.dumps(grants, ensure_ascii=False)[:200],
+                "Remove the saved grants for this folder in the Antigravity app's permission settings")
     else:
-        add("OK", "Antigravity project entry has no permission grants")
+        res.add("OK", "grants", "Antigravity project entry has no permission grants")
     if not cfg["verify"]["default_commands"]:
-        add("WARN", "verify.default_commands is empty: tasks without `verify` get no verification")
+        res.add("WARN", "verify_commands",
+                "verify.default_commands is empty: tasks without `verify` get no verification",
+                "Add the commands that prove work (e.g. your test command) to verify.default_commands")
     if proc.antigravity_ide_running():
-        add("INFO", "Antigravity IDE is running: keep its agent idle on this repo during dispatches")
+        res.add("INFO", "ide", "Antigravity IDE is running: keep its agent idle on this repo during dispatches")
     if room.paused is not None:
-        add("INFO", "room is paused")
+        res.add("INFO", "paused", "room is paused")
     for problem in status_data(room)["problems"]:
-        add("WARN", problem)
-    return finish()
+        res.add("WARN", "problem", problem, "Run `status`; it recovers an interrupted round")
+    return res
 
 
 # ---------------------------------------------------------------- command table

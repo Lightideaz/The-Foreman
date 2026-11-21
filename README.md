@@ -54,8 +54,8 @@ The Foreman automates the relay and keeps the human-grade checks:
   manager takes over.
 - **One tool, many projects.** Each project is a *room* with its own config, permissions and notes. The
   tool itself stays project-neutral; a test enforces it.
-- **No daemon, no server, no dependencies.** Python standard library only. Pause, stop and crash
-  recovery are built in.
+- **No daemon, no dependencies.** Python standard library only. Pause, stop and crash recovery are
+  built in. The optional UI is a local page on 127.0.0.1, served by the standard library.
 
 ---
 
@@ -73,17 +73,39 @@ The Foreman automates the relay and keeps the human-grade checks:
 
 ```powershell
 # 1. Get the tool
-git clone <this repository> C:\Tools	he-foreman
-cd C:\Tools	he-foreman
-python -m unittest discover -s tests          # 77 tests, about 90 seconds
+git clone <this repository> C:\Tools\the-foreman
+cd C:\Tools\the-foreman
+python -m unittest discover -s tests          # 105 tests, about two minutes
+```
 
-# 2. Create a room for your project (its working tree must be clean)
-python room.py --room my-app init --repo "D:\Code\my-app" --base main
+### The easy way: the local UI
 
-# 3. Tell the room how to prove work, then check the setup
-#    edit rooms\my-app\room.toml  ->  [verify] default_commands = ["npm test"]
+Double-click **`Foreman.cmd`** in the tool folder. It starts the UI in the background, without a console
+window. (From a terminal: `python foreman_ui.py`, which also prints the page address.)
+
+Your browser opens The Foreman's control panel. It checks this computer (Python, Git, agy) and links each
+missing piece to its official download page. **Add a project** walks you through the rest: pick the
+project folder, confirm the test commands and executor rules it suggests from your stack, and it runs
+`init` and `doctor` for you, with a plain fix for anything that needs attention. It also shows every
+room, its running round and the last round's evidence, and lets you pause a room, stop a round or open a
+report.
+
+The UI never dispatches, verifies or accepts work: that stays with your manager agent. It runs on
+127.0.0.1 only, with a one-time token per launch, makes no network requests, and stops with the Quit
+link at the bottom of the page, Ctrl+C in its terminal, or after 10 idle minutes. If it cannot start,
+a message box points to `foreman_ui.log`. Details: `docs/UI-DESIGN.md`.
+
+### The command-line way
+
+```powershell
+# Create a room for your project, with the commands that prove work
+python room.py --room my-app init --repo "D:\Code\my-app" --base main --verify "npm test"
+
+# Check the setup; every warning comes with a fix
 python room.py --room my-app doctor
 ```
+
+`python room.py check` checks this computer before any room exists.
 
 From here on, your manager agent drives the room. You mostly talk to it.
 
@@ -186,6 +208,7 @@ See `docs/DESIGN.md` for the full threat model and the agy behaviours it is buil
 | File | For |
 |---|---|
 | `docs/OPERATOR-GUIDE.md` | The manager agent's playbook |
+| `docs/UI-DESIGN.md` | The local UI: screens and security model |
 | `docs/DESIGN.md` | Architecture, state machine, permission models, observed agy behaviour |
 | `docs/ACCEPTANCE-TESTS.md` | How the tool was proven against the real agy CLI |
 
