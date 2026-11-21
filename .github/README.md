@@ -1,6 +1,45 @@
-# The Foreman
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.svg">
+    <img src="assets/hero-light.svg" width="100%" alt="The Foreman: delegate to AI agents and keep the evidence">
+  </picture>
+</p>
 
-**A supervised workbench for two AI agents: one that thinks, one that builds.**
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.2.0-3A3A37?style=flat-square&labelColor=1C1C1A" alt="Version 1.2.0">
+  <img src="https://img.shields.io/badge/license-MIT-3A3A37?style=flat-square&labelColor=1C1C1A" alt="MIT License">
+  <img src="https://img.shields.io/badge/python-3.11%2B-3A3A37?style=flat-square&labelColor=1C1C1A" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/platform-Windows-3A3A37?style=flat-square&labelColor=1C1C1A" alt="Windows">
+  <img src="https://img.shields.io/badge/dependencies-0-F0583A?style=flat-square&labelColor=1C1C1A" alt="Zero dependencies">
+</p>
+
+<p align="center">
+  <b>A supervised workbench for two AI agents: one that thinks, one that builds.</b><br>
+  Hand a coding task to an executor agent and get back evidence, not a story.
+</p>
+
+<p align="center">
+  <a href="#quick-start"><b>Quick start</b></a> ·
+  <a href="#how-a-task-flows"><b>How it works</b></a> ·
+  <a href="#safety-model-in-one-paragraph"><b>Safety</b></a> ·
+  <a href="/app/CHANGELOG.md"><b>Changelog</b></a>
+</p>
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/features-dark.svg">
+  <img src="assets/features-light.svg" width="100%" alt="Evidence, not narration. Sandboxed by default. Verify-gated accept.">
+</picture>
+
+## See it
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/ui-dark.png">
+  <img src="assets/ui-light.png" width="100%" alt="The Foreman control panel: rooms, a running round with a live timer, machine checks and the last round's evidence">
+</picture>
+
+<p align="center"><sub>The local control panel. Double-click <code>Foreman.cmd</code>; light and dark follow Windows.</sub></p>
 
 The Foreman lets a *manager* agent (the one you talk to) hand a single, well-defined coding task to an
 *executor* agent, then get back **evidence** instead of a story: the exact diff, the commands that really
@@ -29,6 +68,14 @@ The Foreman automates the relay and keeps the human-grade checks:
 
 ## How a task flows
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/flow-dark.svg">
+  <img src="assets/flow-light.svg" width="100%" alt="How a task flows: brief, build in a sandbox, verify, accept">
+</picture>
+
+<details>
+<summary>The same flow, command by command</summary>
+
 ```text
  manager agent            The Foreman (room.py)                  executor (agy CLI)
  ─────────────            ──────────────────────                 ──────────────────
@@ -39,6 +86,8 @@ The Foreman automates the relay and keeps the human-grade checks:
  ─verify─────────────────▶ runs your test commands itself
  ─accept / rework / reject▶ one squash commit on main (never pushed)
 ```
+
+</details>
 
 ## Highlights
 
@@ -87,7 +136,7 @@ C:\Tools\the-foreman\
   rooms\          one folder per project, local to this computer (never committed)
 ```
 
-(Plus `.github\`, which holds only this README so GitHub can show it.)
+(Plus `.github\`, which holds this README and its images so GitHub can show them.)
 
 ### The easy way: the local UI
 
