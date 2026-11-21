@@ -402,6 +402,27 @@ class AboutTests(unittest.TestCase):
         self.assertEqual(commands.DEFAULT_ROOMS_DIR, TOOL_HOME.parent / "rooms")
 
 
+class PrefsTests(unittest.TestCase):
+    def test_theme_preference_round_trip(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "ui-prefs.json"
+            self.assertEqual(server.load_prefs(path), {"theme": "system"})
+            self.assertEqual(server.save_prefs({"theme": "dark", "extra": 1}, path), {"theme": "dark"})
+            self.assertEqual(server.load_prefs(path), {"theme": "dark"})
+            path.write_text('{"theme": "neon"}', encoding="utf-8")
+            self.assertEqual(server.load_prefs(path), {"theme": "system"})
+            path.write_text("not json", encoding="utf-8")
+            self.assertEqual(server.load_prefs(path), {"theme": "system"})
+            with self.assertRaises(InvalidInput):
+                server.save_prefs({"theme": '" onload="x'}, path)
+
+    def test_theme_attribute_is_fixed_text(self):
+        self.assertEqual(server.theme_attr("dark"), b' data-theme="dark"')
+        self.assertEqual(server.theme_attr("light"), b' data-theme="light"')
+        self.assertEqual(server.theme_attr("system"), b"")
+        self.assertEqual(server.theme_attr('"><script>'), b"")
+
+
 class NeutralityTests(unittest.TestCase):
     def test_ui_code_is_project_neutral(self):
         """Stack names live in foreman_ui/stacks.toml only; everything else stays project-neutral."""

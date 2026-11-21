@@ -31,6 +31,31 @@ CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'
        "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 MAX_BODY = 64 * 1024
 TOKEN_HEADER = "X-Foreman-Token"
+PREFS = TOOL_HOME / "ui-prefs.json"
+THEMES = ("system", "light", "dark")
+
+
+def load_prefs(path: Path = PREFS) -> dict:
+    """UI preferences kept beside the app (a new port each launch means browser storage would forget them)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    theme = data.get("theme") if isinstance(data, dict) else None
+    return {"theme": theme if theme in THEMES else "system"}
+
+
+def save_prefs(prefs: dict, path: Path = PREFS) -> dict:
+    theme = prefs.get("theme")
+    if theme not in THEMES:
+        raise InvalidInput(f"theme must be one of {', '.join(THEMES)}")
+    clean = {"theme": theme}
+    path.write_text(json.dumps(clean) + "\n", encoding="utf-8")
+    return clean
+
+
+def theme_attr(theme: str) -> bytes:
+    return f' data-theme="{theme}"'.encode("ascii") if theme in ("light", "dark") else b""
 
 
 def same_token(given: str | None, token: str) -> bool:
@@ -224,6 +249,8 @@ class Handler(BaseHTTPRequestHandler):
         data = path.read_bytes()
         if ext in ("html", "css", "js"):
             data = data.replace(b"{{TOKEN}}", self.server.token.encode("ascii"))
+        if name == "index.html":
+            data = data.replace(b"{{THEME_ATTR}}", theme_attr(load_prefs()["theme"]))
         self._send(200, data, TYPES[ext])
 
     # ------------------------------------------------------------------ API
@@ -333,6 +360,9 @@ class Handler(BaseHTTPRequestHandler):
         os.startfile(str(target.resolve()))   # noqa: S606 - a folder inside the room, opened in Explorer
         return {"opened": str(target.resolve())}
 
+    def api_prefs(self, query: dict, body: dict) -> dict:
+        return save_prefs(body)
+
     def api_heartbeat(self, query: dict, body: dict) -> dict:
         return {"ok": True}
 
@@ -355,6 +385,7 @@ ROUTES = {
     ("POST", "/api/unpause"): Handler.api_unpause,
     ("POST", "/api/stop"): Handler.api_stop,
     ("POST", "/api/open-folder"): Handler.api_open_folder,
+    ("POST", "/api/prefs"): Handler.api_prefs,
     ("POST", "/api/heartbeat"): Handler.api_heartbeat,
     ("POST", "/api/quit"): Handler.api_quit,
 }

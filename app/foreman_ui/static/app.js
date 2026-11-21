@@ -137,6 +137,50 @@ function route() {
   if (view === "add" && (!state.wiz || state.step === 4)) resetWizard();
 }
 
+/* ------------------------------------------------------------------ theme */
+
+const THEMES = {
+  system: { next: "light", label: "Theme: follow Windows",
+            paths: ["M4.5 4.5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 15V6a1.5 1.5 0 0 1 1.5-1.5z",
+                    "M8.5 20h7", "M12 16.5V20"] },
+  light: { next: "dark", label: "Theme: light",
+           paths: ["M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M12 2.5v2", "M12 19.5v2", "M4.6 4.6 6 6", "M18 18l1.4 1.4",
+                   "M2.5 12h2", "M19.5 12h2", "M4.6 19.4 6 18", "M18 6l1.4-1.4"] },
+  dark: { next: "system", label: "Theme: dark",
+          paths: ["M19.5 14.6A7.5 7.5 0 1 1 9.4 4.5a6 6 0 0 0 10.1 10.1z"] },
+};
+
+function readTheme() {
+  // The server writes the saved choice onto <html data-theme> before the page loads (no flash).
+  const saved = document.documentElement.getAttribute("data-theme");
+  return THEMES[saved] ? saved : "system";
+}
+
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === "system") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", mode);
+  const icon = $("theme-icon");
+  icon.replaceChildren(...THEMES[mode].paths.map((d) => {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    return path;
+  }));
+  const btn = $("theme-btn");
+  btn.title = `${THEMES[mode].label} (click to change)`;
+  btn.setAttribute("aria-label", THEMES[mode].label);
+  state.theme = mode;
+}
+
+async function cycleTheme() {
+  const next = THEMES[state.theme || "system"].next;
+  applyTheme(next);
+  toast(THEMES[next].label);
+  try {
+    await api("/api/prefs", { theme: next });
+  } catch { /* not saved: the choice lasts for this page only */ }
+}
+
 /* ------------------------------------------------------------------ about */
 
 function formatDate(iso) {
@@ -152,7 +196,7 @@ async function loadAbout() {
     return;
   }
   $("version-tag").textContent = `v${a.version}`;
-  $("about-version").textContent = `Version ${a.version}`;
+  $("about-version").textContent = a.version;
   if (a.released) {
     $("about-released").textContent = `Released ${formatDate(a.released)}`;
     $("about-released").hidden = false;
@@ -966,6 +1010,7 @@ async function create() {
 /* ------------------------------------------------------------------ wiring */
 
 const ACTIONS = {
+  theme: () => cycleTheme(),
   recheck: () => loadMachine(),
   "copy-instructions": () => copyInstructions($("agent-room").value || (state.rooms.find((r) => !r.error) || {}).name),
   "copy-new-instructions": () => copyInstructions(state.wiz && state.wiz.name),
@@ -1014,6 +1059,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 async function start() {
+  applyTheme(readTheme());
   $("greeting").textContent = greeting();
   route();
   try {

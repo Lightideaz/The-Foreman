@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en"{{THEME_ATTR}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,6 +20,9 @@
     </span>
     <span class="brand-name">The Foreman</span>
     <span class="tag mono" id="version-tag"></span>
+    <button type="button" class="icon-btn" id="theme-btn" data-action="theme" aria-label="Theme: follow Windows" title="Theme: follow Windows">
+      <svg viewBox="0 0 24 24" aria-hidden="true" id="theme-icon"></svg>
+    </button>
   </div>
 
   <nav class="nav" aria-label="Main">
@@ -35,10 +38,6 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"></path><path d="M5 17a3 3 0 0 1 3-3h10.5"></path></svg>
       <span>Guide</span><kbd>3</kbd>
     </a>
-    <a href="#about" data-view="about">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v5"></path><path d="M12 7.8v.2"></path></svg>
-      <span>About</span><kbd>4</kbd>
-    </a>
   </nav>
 
   <div class="nav-section">
@@ -53,10 +52,16 @@
   </div>
 
   <div class="side-foot">
+    <nav class="nav" aria-label="About and quit">
+    <a href="#about" data-view="about">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v5"></path><path d="M12 7.8v.2"></path></svg>
+      <span>About</span><kbd>4</kbd>
+    </a>
     <button type="button" class="nav-btn" data-action="quit">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v8"></path><path d="M6.6 7.4a7.5 7.5 0 1 0 10.8 0"></path></svg>
       <span>Quit</span>
     </button>
+    </nav>
     <div class="status-card" id="status-card">
       <div class="status-line"><span class="dot neutral" id="status-dot"></span><span id="status-text">Checking this computer…</span></div>
       <div class="status-keys" id="status-keys"></div>
@@ -180,44 +185,88 @@
 <!-- ------------------------------------------------------------ About -->
 <main id="view-about" class="view" hidden>
   <section class="about-hero">
-    <span class="about-mark" aria-hidden="true">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
-    </span>
-    <div class="about-title">
-      <h1>The Foreman</h1>
-      <p class="sub">A supervised workbench for two AI agents: one that thinks, one that builds.</p>
-      <div class="chips"><span class="chip neutral" id="about-version">Version</span><span class="chip neutral" id="about-released" hidden></span></div>
+    <div class="about-hero-main">
+      <span class="about-mark" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
+      </span>
+      <div class="about-title">
+        <p class="eyebrow mono">About</p>
+        <h1>The Foreman</h1>
+        <p class="sub">A supervised workbench for two AI agents: one that thinks, one that builds.</p>
+        <div class="chips">
+          <span class="chip neutral" id="about-released" hidden></span>
+          <span class="chip neutral">MIT License</span>
+          <span class="chip neutral">Windows 10 &amp; 11</span>
+        </div>
+      </div>
+    </div>
+    <div class="about-version">
+      <span class="stat-label">Version</span>
+      <span class="about-version-num" id="about-version">—</span>
+      <span class="stat-note">Latest release</span>
     </div>
   </section>
 
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">Dependencies</span>
+      <div class="stat-row"><span class="stat-value">0</span><span class="stat-unit">packages</span></div>
+      <span class="stat-note">Python standard library only</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Network calls</span>
+      <div class="stat-row"><span class="stat-value">0</span><span class="stat-unit">requests</span></div>
+      <span class="stat-note">Nothing leaves this computer</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Agents</span>
+      <div class="stat-row"><span class="stat-value">2</span><span class="stat-unit">seats</span></div>
+      <span class="stat-note">One thinks, one builds</span>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>How a task flows</h2><span class="muted small">Evidence at every step</span></div>
+    <ol class="flow">
+      <li><span class="flow-num mono">01</span><b>Brief</b><span>Your manager agent writes the task: scope, criteria and the commands that prove it.</span></li>
+      <li><span class="flow-num mono">02</span><b>Build</b><span>The executor works on its own branch, in a sandbox with no network.</span></li>
+      <li><span class="flow-num mono">03</span><b>Verify</b><span>The manager reads the diff; The Foreman runs your tests on the exact branch head.</span></li>
+      <li><span class="flow-num mono">04</span><b>Accept</b><span>One commit on your base branch. Nothing is ever pushed.</span></li>
+    </ol>
+  </section>
+
   <div class="about-grid">
+    <section class="panel" aria-labelledby="changelog-title">
+      <div class="panel-head"><h2 id="changelog-title">Release notes</h2><span class="muted small">Highlights only</span></div>
+      <ol class="timeline" id="changelog"></ol>
+    </section>
+
     <div class="stack">
       <section class="panel">
-        <div class="panel-head"><h2>About this release</h2></div>
+        <div class="panel-head"><h2>This release</h2></div>
         <div class="kv-list" id="about-facts"></div>
       </section>
       <section class="panel">
-        <div class="panel-head"><h2>Principles</h2></div>
-        <ul class="plain">
-          <li><b>Evidence over claims.</b> The executor's report is a claim; git and the recorded activity are the evidence.</li>
-          <li><b>The manager decides.</b> Nothing is dispatched, verified or accepted without your manager agent.</li>
-          <li><b>Nothing leaves this computer.</b> No telemetry, no cloud service, nothing is ever pushed.</li>
-        </ul>
-      </section>
-      <section class="panel">
-        <div class="panel-head"><h2>Credits</h2></div>
-        <p class="muted small">Typefaces: Inter, © The Inter Project Authors; IBM Plex Mono, © IBM Corp.; Doto, © The Doto Project Authors. All under the SIL Open Font License 1.1.</p>
-        <p class="muted small">Built with the Python standard library. No third-party packages.</p>
+        <div class="panel-head"><h2>Credits</h2><span class="muted small">With thanks</span></div>
+        <div class="credits">
+          <div class="credit"><div><b>Inter</b><span>Interface typeface · The Inter Project Authors</span></div><span class="chip neutral">OFL 1.1</span></div>
+          <div class="credit"><div><b>IBM Plex Mono</b><span>Paths, commands and labels · IBM Corp.</span></div><span class="chip neutral">OFL 1.1</span></div>
+          <div class="credit"><div><b>Doto</b><span>Dot-matrix numbers · The Doto Project Authors</span></div><span class="chip neutral">OFL 1.1</span></div>
+          <div class="credit"><div><b>Python standard library</b><span>The whole runtime · Python Software Foundation</span></div><span class="chip neutral">PSF</span></div>
+          <div class="credit"><div><b>Google Antigravity CLI</b><span>The executor seat · installed separately by you</span></div><span class="chip neutral">Not bundled</span></div>
+          <div class="credit"><div><b>Icons and interface</b><span>Drawn for The Foreman · Lightideaz.com</span></div><span class="chip neutral">MIT</span></div>
+        </div>
       </section>
     </div>
-
-    <section class="panel" aria-labelledby="changelog-title">
-      <div class="panel-head"><h2 id="changelog-title">Changelog</h2><span class="muted small">Highlights only</span></div>
-      <ol class="timeline" id="changelog"></ol>
-    </section>
   </div>
 
-  <p class="legal" id="about-legal"></p>
+  <footer class="about-foot">
+    <span class="about-foot-mark" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a8 8 0 0 1 16 0"></path><path d="M2 14h20v3H2z"></path><path d="M12 6V3"></path></svg>
+    </span>
+    <p class="legal" id="about-legal"></p>
+    <p class="legal faint">Made for people who delegate to AI agents and still want evidence.</p>
+  </footer>
 </main>
 
 <!-- ------------------------------------------------------------ Add a project -->

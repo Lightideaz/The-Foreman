@@ -24,7 +24,10 @@ manager.
 Since 1.2 the look is a calm desktop-app style: a sidebar (views, the rooms with a status dot, a machine
 status card), a greeting header, three stat cards with dot-matrix numbers, hairline panels, uppercase mono
 status chips. Light mode is a warm off-white; dark mode is near-black with one lime accent. The page follows
-the Windows app theme through `prefers-color-scheme`; there is no toggle. The home page also shows a
+the Windows app theme through `prefers-color-scheme`; the button beside the name in the sidebar cycles
+System → Light → Dark. The choice is saved in `app/ui-prefs.json` (git-ignored), not in browser storage,
+because every launch gets a new port and so a new browser origin; the server writes it onto `<html>` before
+the page loads, so there is no flash. The home page also shows a
 **Recent activity** feed (the newest events of every room, from `list --json`), and a floating pill with a
 live timer while a round runs. Keys `1`–`4` switch views and `N` opens the new-room wizard.
 (1.0–1.1 used the light-coffee identity from the design canvas; it was replaced on 2026-11-21.)
